@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>北疆 15 日 · 絲路之約</title>
 
+<script>window._AMapSecurityConfig = { securityJsCode: '4c535ff61e6c7fc1f8dbdb6db4c80fbd' };</script>
 <script src="https://webapi.amap.com/maps?v=2.0&key=9d77f4d629823a1039471552adabbb02&plugin=AMap.InfoWindow,AMap.PlaceSearch"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -1232,7 +1233,7 @@
     <button class="modal-close" onclick="closeLocationModal()">✕</button>
     <h3 class="modal-title" data-tc="搜尋地點" data-sc="搜寻地点">搜尋地點</h3>
     <div class="location-search-row">
-      <input type="text" id="location-search-input" placeholder="輸入餐廳、景點名稱..." onkeydown="if(event.key==='Enter')searchPlace()">
+      <input type="text" id="location-search-input" placeholder="例：烏魯木齊 大盤雞" onkeydown="if(event.key==='Enter')searchPlace()">
       <button class="btn-search-place" onclick="searchPlace()">搜尋</button>
     </div>
     <div id="location-results"></div>
@@ -2114,22 +2115,25 @@ function searchPlace() {
   const resultsDiv = document.getElementById('location-results');
   resultsDiv.innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:13px">搜尋中...</div>';
 
-  const placeSearch = new AMap.PlaceSearch({ pageSize: 8, city: '新疆' });
-  placeSearch.search(keyword, (status, result) => {
-    if (status !== 'complete' || !result.poiList || !result.poiList.pois.length) {
-      resultsDiv.innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:13px">找不到結果，試試更短的關鍵字</div>';
-      return;
-    }
-    resultsDiv.innerHTML = result.poiList.pois.map((poi, i) => `
-      <div class="location-result-item">
-        <div>
-          <div class="location-result-name">${poi.name}</div>
-          <div class="location-result-addr">${poi.address || poi.cityname || ''}</div>
+  AMap.plugin('AMap.PlaceSearch', () => {
+    const placeSearch = new AMap.PlaceSearch({ pageSize: 8 });
+    placeSearch.search(keyword, (status, result) => {
+      console.log('PlaceSearch status:', status, result);
+      if (status !== 'complete' || !result.poiList || !result.poiList.pois.length) {
+        resultsDiv.innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:13px">找不到結果，試試加上城市名（例：烏魯木齊 大盤雞）</div>';
+        return;
+      }
+      resultsDiv._pois = result.poiList.pois;
+      resultsDiv.innerHTML = result.poiList.pois.map((poi, i) => `
+        <div class="location-result-item">
+          <div>
+            <div class="location-result-name">${poi.name}</div>
+            <div class="location-result-addr">${poi.address || poi.cityname || ''}</div>
+          </div>
+          <button class="btn-add-poi" onclick="addLocation(${i})">加入</button>
         </div>
-        <button class="btn-add-poi" onclick="addLocation(${i})">加入</button>
-      </div>
-    `).join('');
-    resultsDiv._pois = result.poiList.pois;
+      `).join('');
+    });
   });
 }
 
