@@ -341,6 +341,14 @@
     margin-top: 6px;
   }
 
+  .day-date {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--sand-400);
+    margin-top: 3px;
+    letter-spacing: 0.5px;
+  }
+
   .day-content {
     background: white;
     border: 1px solid var(--sand-200);
@@ -1869,11 +1877,16 @@ function renderTimeline(lang) {
       <div class="spot-tips-container" id="tips-${d.day}-${idx}"></div>`;
     }).join('');
 
+    const tripStart = new Date('2026-06-10');
+    tripStart.setDate(tripStart.getDate() + parseInt(d.day) - 1);
+    const dateStr = `${tripStart.getMonth() + 1}/${tripStart.getDate()}`;
+
     return `
       <div class="day">
         <div class="day-marker">
           <div class="day-number">${d.day}</div>
           <div class="day-label">Day ${parseInt(d.day)}</div>
+          <div class="day-date">${dateStr}</div>
         </div>
         <div class="day-content">
           <h3 class="day-title">${title}</h3>
