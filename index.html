@@ -638,6 +638,28 @@
   .legend-dot-teal { background: var(--teal); }
 
   /* Location search modal */
+  .loc-cat-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 16px 0 4px;
+  }
+  .loc-cat-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--sand-200);
+    border-radius: 20px;
+    background: white;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .loc-cat-btn.active {
+    background: var(--ink);
+    color: white;
+    border-color: var(--ink);
+  }
   .location-modal-inner {
     background: var(--sand-50);
     border-radius: 6px;
@@ -696,13 +718,16 @@
   }
   .btn-add-poi:hover { opacity: 0.85; }
   .location-marker {
-    width: 28px;
-    height: 28px;
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    background: var(--teal);
-    border: 3px solid var(--sand-50);
-    box-shadow: 0 4px 12px rgba(45,106,95,0.4);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
   }
 
   /* === Footer === */
@@ -1232,6 +1257,13 @@
   <div class="location-modal-inner">
     <button class="modal-close" onclick="closeLocationModal()">✕</button>
     <h3 class="modal-title" data-tc="搜尋地點" data-sc="搜寻地点">搜尋地點</h3>
+    <div class="loc-cat-row">
+      <button class="loc-cat-btn active" data-cat="food" onclick="selectLocCat(this)">🍜 美食</button>
+      <button class="loc-cat-btn" data-cat="sight" onclick="selectLocCat(this)">🏔 景點</button>
+      <button class="loc-cat-btn" data-cat="hotel" onclick="selectLocCat(this)">🏨 住宿</button>
+      <button class="loc-cat-btn" data-cat="shop" onclick="selectLocCat(this)">🛍 購物</button>
+      <button class="loc-cat-btn" data-cat="other" onclick="selectLocCat(this)">📍 其他</button>
+    </div>
     <div class="location-search-row">
       <input type="text" id="location-search-input" placeholder="例：烏魯木齊 大盤雞" onkeydown="if(event.key==='Enter')searchPlace()">
       <button class="btn-search-place" onclick="searchPlace()">搜尋</button>
@@ -2096,6 +2128,20 @@ map.on('mouseout', () => map.setStatus({ scrollWheel: false }));
 
 // ============ 團員地點 ============
 const locationMarkers = {};
+const LOC_CATS = {
+  food:  { label: '美食', icon: '🍜', color: '#c0392b' },
+  sight: { label: '景點', icon: '🏔', color: '#2D6A5F' },
+  hotel: { label: '住宿', icon: '🏨', color: '#2980b9' },
+  shop:  { label: '購物', icon: '🛍', color: '#8e44ad' },
+  other: { label: '其他', icon: '📍', color: '#7f8c8d' },
+};
+let currentLocCat = 'food';
+
+function selectLocCat(btn) {
+  document.querySelectorAll('.loc-cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentLocCat = btn.dataset.cat;
+}
 
 function openLocationSearch() {
   if (!diaryUser) { openAuthModal(); return; }
@@ -2143,6 +2189,7 @@ function addLocation(idx) {
   db.collection('locations').add({
     name: poi.name,
     address: poi.address || '',
+    category: currentLocCat,
     lng: poi.location.lng,
     lat: poi.location.lat,
     author: diaryUser.name,
@@ -2156,14 +2203,16 @@ function initLocations() {
       if (change.type === 'added') {
         const d = change.doc.data();
         if (!d.lng || !d.lat) return;
+        const cat = LOC_CATS[d.category] || LOC_CATS.other;
         const marker = new AMap.Marker({
           position: [d.lng, d.lat],
-          content: '<div class="location-marker"></div>',
-          offset: new AMap.Pixel(-14, -28)
+          content: `<div class="location-marker" style="background:${cat.color}">${cat.icon}</div>`,
+          offset: new AMap.Pixel(-15, -15)
         });
+        const navUrl = `https://uri.amap.com/marker?position=${d.lng},${d.lat}&name=${encodeURIComponent(d.name)}&coordinate=gaode&callnative=1`;
         const info = new AMap.InfoWindow({
-          content: `<strong style="font-size:14px;font-family:'Noto Serif TC',serif">${d.name}</strong><br><span style="color:var(--teal);font-size:11px">by ${d.author}</span>${d.address ? `<br><span style="font-size:11px;color:#888">${d.address}</span>` : ''}`,
-          offset: new AMap.Pixel(0, -30)
+          content: `<strong style="font-size:14px;font-family:'Noto Serif TC',serif">${cat.icon} ${d.name}</strong><br><span style="font-size:11px;color:#888">by ${d.author}${d.address ? ' · ' + d.address : ''}</span><br><a href="${navUrl}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#2D6A5F;text-decoration:none;border:1px solid #2D6A5F;border-radius:3px;padding:3px 10px">在高德地圖開啟 →</a>`,
+          offset: new AMap.Pixel(0, -18)
         });
         marker.on('click', () => info.open(map, marker.getPosition()));
         map.add(marker);
