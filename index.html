@@ -590,24 +590,39 @@
     padding: 0 32px;
   }
 
+  .map-wrap {
+    position: relative;
+    margin-top: 32px;
+  }
+
   #map {
     height: 600px;
     border-radius: 4px;
     border: 1px solid var(--sand-200);
-    margin-top: 32px;
     filter: saturate(0.85) sepia(0.05);
   }
 
-  .map-bottom-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 20px;
-    gap: 12px;
-    flex-wrap: wrap;
+  .btn-add-location {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 999;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    padding: 8px 16px;
+    background: var(--teal);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: opacity 0.2s;
   }
+  .btn-add-location:hover { opacity: 0.85; }
 
   .map-legend {
+    margin-top: 16px;
     display: flex;
     gap: 24px;
     font-family: 'Inter', sans-serif;
@@ -620,21 +635,6 @@
   .legend-item { display: flex; align-items: center; gap: 8px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange-500); }
   .legend-dot-teal { background: var(--teal); }
-
-  .btn-add-location {
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
-    letter-spacing: 1px;
-    padding: 7px 16px;
-    background: var(--teal);
-    color: var(--sand-50);
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-  }
-  .btn-add-location:hover { opacity: 0.85; }
 
   /* Location search modal */
   .location-modal-inner {
@@ -1214,14 +1214,14 @@
     <div class="section-tag">ROUTE MAP</div>
     <h2 class="section-title" data-tc="行 <em>跡</em> 圖" data-sc="行 <em>迹</em> 图">行 <em>跡</em> 圖</h2>
     <p class="section-intro" data-tc="點擊地圖上的橙色標記,查看每天的目的地。本地圖採用高德地圖底圖,在中國境內顯示流暢。" data-sc="点击地图上的橙色标记,查看每天的目的地。本地图采用高德地图底图,在中国境内显示流畅。">點擊地圖上的橙色標記,查看每天的目的地。本地圖採用高德地圖底圖,在中國境內顯示流暢。</p>
-    <div id="map"></div>
-    <div class="map-bottom-bar">
-      <div class="map-legend">
-        <div class="legend-item"><div class="legend-dot"></div><span data-tc="行程景點" data-sc="行程景点">行程景點</span></div>
-        <div class="legend-item"><div class="legend-dot legend-dot-teal"></div><span data-tc="團員新增" data-sc="团员新增">團員新增</span></div>
-        <div class="legend-item"><span data-tc="虛線為大致行車路線" data-sc="虚线为大致行车路线">虛線為大致行車路線</span></div>
-      </div>
+    <div class="map-wrap">
+      <div id="map"></div>
       <button class="btn-add-location" id="btn-add-location" onclick="openLocationSearch()" data-tc="＋ 加地點" data-sc="＋ 加地点">＋ 加地點</button>
+    </div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot"></div><span data-tc="行程景點" data-sc="行程景点">行程景點</span></div>
+      <div class="legend-item"><div class="legend-dot legend-dot-teal"></div><span data-tc="團員新增" data-sc="团员新增">團員新增</span></div>
+      <div class="legend-item"><span data-tc="虛線為大致行車路線" data-sc="虚线为大致行车路线">虛線為大致行車路線</span></div>
     </div>
   </div>
 </section>
@@ -2070,8 +2070,9 @@ function renderMarkers(lang) {
     });
     const name = lang === 'sc' ? s.name_sc : s.name_tc;
     const desc = lang === 'sc' ? s.desc_sc : s.desc_tc;
+    const navUrl = `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(name)}&coordinate=gaode&callnative=1`;
     const info = new AMap.InfoWindow({
-      content: `<strong style="font-size:15px">${name}</strong><br><span style="color:#7E3D14;font-size:12px">${desc}</span>`,
+      content: `<strong style="font-size:15px">${name}</strong><br><span style="color:#7E3D14;font-size:12px">${desc}</span><br><a href="${navUrl}" target="_blank" style="display:inline-block;margin-top:8px;font-size:12px;color:#2D6A5F;text-decoration:none;border:1px solid #2D6A5F;border-radius:3px;padding:3px 10px">在高德地圖開啟 →</a>`,
       offset: new AMap.Pixel(0, -32)
     });
     marker.on('click', () => info.open(map, marker.getPosition()));
