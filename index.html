@@ -393,11 +393,31 @@
 
   .schedule-item {
     display: grid;
-    grid-template-columns: 80px 24px 1fr;
+    grid-template-columns: 80px 24px 1fr auto;
     gap: 12px;
     padding: 6px 0;
     font-size: 14px;
     align-items: start;
+  }
+
+  .btn-add-spot-tip {
+    background: none;
+    border: none;
+    color: var(--sand-300);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 2px;
+    line-height: 1.5;
+    transition: color 0.2s;
+  }
+
+  .btn-add-spot-tip:hover { color: var(--orange-500); }
+
+  .spot-tips-container {
+    margin: 2px 0 8px 116px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
   }
 
   .schedule-time {
@@ -463,7 +483,23 @@
     color: var(--sand-300);
     margin-top: 2px;
     letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+
+  .btn-delete-tip {
+    background: none;
+    border: none;
+    color: var(--sand-300);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+
+  .btn-delete-tip:hover { color: #c0392b; }
 
   .btn-add-tip {
     margin-top: 8px;
@@ -981,7 +1017,8 @@
     .day-content { padding: 20px; }
     .day-number { font-size: 40px; }
     .hero-meta { gap: 24px; }
-    .schedule-item { grid-template-columns: 60px 20px 1fr; gap: 8px; font-size: 13px; }
+    .schedule-item { grid-template-columns: 60px 20px 1fr auto; gap: 8px; font-size: 13px; }
+    .spot-tips-container { margin-left: 88px; }
     #map { height: 400px; }
 
     .diary-auth-bar { flex-direction: column; align-items: flex-start; }
@@ -1117,7 +1154,7 @@
 <!-- Tip Modal -->
 <div class="diary-modal-overlay" id="tip-modal">
   <div class="diary-modal">
-    <div class="diary-modal-title">＋ 加貼士</div>
+    <div class="diary-modal-title">＋ 加備註</div>
     <label>類型</label>
     <div class="tip-cat-picker">
       <button class="tip-cat-btn selected" data-cat="food" onclick="selectTipCat(this)">🍖 食物</button>
@@ -1624,7 +1661,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeAuthModal(); closeWriteModal(); closeTipModal(); }
 });
 
-// ============ 貼士系統 ============
+// ============ 備註系統 ============
 const TIP_CATS = {
   food: { icon: '🍖', label_tc: '食物', label_sc: '食物' },
   spot: { icon: '📍', label_tc: '景點', label_sc: '景点' },
@@ -1634,6 +1671,7 @@ const TIP_CATS = {
 
 let allTips = [];
 let currentTipDay = null;
+let currentTipIdx = null;
 let selectedTipCat = 'food';
 
 function initTips() {
@@ -1648,20 +1686,27 @@ function initTips() {
 
 function renderTips(lang) {
   itinerary.forEach(day => {
-    const container = document.getElementById(`tips-${day.day}`);
-    if (!container) return;
-    const dayTips = allTips.filter(t => t.day === day.day);
-    container.innerHTML = dayTips.map(t => {
-      const cat = TIP_CATS[t.category] || TIP_CATS.info;
-      return `
-        <div class="tip-card" data-cat="${t.category}">
-          <span class="tip-icon">${cat.icon}</span>
-          <div class="tip-body">
-            <div>${t.text}</div>
-            <div class="tip-author">${t.author}</div>
-          </div>
-        </div>`;
-    }).join('');
+    day.schedule.forEach((s, idx) => {
+      const container = document.getElementById(`tips-${day.day}-${idx}`);
+      if (!container) return;
+      const spotTips = allTips.filter(t => t.day === day.day && t.scheduleIdx === idx);
+      container.innerHTML = spotTips.map(t => {
+        const cat = TIP_CATS[t.category] || TIP_CATS.info;
+        return `
+          <div class="tip-card" data-cat="${t.category}">
+            <span class="tip-icon">${cat.icon}</span>
+            <div class="tip-body">
+              <div>${t.text}</div>
+              <div class="tip-author">
+                <span>${t.author}</span>
+                ${diaryUser && diaryUser.name === t.author
+                  ? `<button class="btn-delete-tip" onclick="deleteTip('${t.id}')">✕ 刪除</button>`
+                  : ''}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    });
   });
 }
 
@@ -1671,9 +1716,10 @@ function selectTipCat(btn) {
   btn.classList.add('selected');
 }
 
-function openTipModal(day) {
+function openTipModal(day, idx) {
   if (!diaryUser) { openAuthModal(); return; }
   currentTipDay = day;
+  currentTipIdx = (idx !== undefined) ? idx : null;
   document.getElementById('tip-text').value = '';
   document.getElementById('tip-error').textContent = '';
   selectedTipCat = 'food';
@@ -1687,6 +1733,15 @@ function closeTipModal() {
   document.getElementById('tip-modal').classList.remove('open');
 }
 
+async function deleteTip(id) {
+  if (!confirm('確定刪除這則備註？')) return;
+  try {
+    await db.collection('tips').doc(id).delete();
+  } catch(e) {
+    alert('刪除失敗，請稍後再試');
+  }
+}
+
 async function submitTip() {
   const text = document.getElementById('tip-text').value.trim();
   const errEl = document.getElementById('tip-error');
@@ -1697,6 +1752,7 @@ async function submitTip() {
   try {
     await db.collection('tips').add({
       day: currentTipDay,
+      scheduleIdx: currentTipIdx,
       author: diaryUser.name,
       category: selectedTipCat,
       text,
@@ -1717,12 +1773,14 @@ function renderTimeline(lang) {
     const title = lang === 'sc' ? d.title_sc : d.title_tc;
     const hotel = lang === 'sc' ? d.hotel_sc : d.hotel_tc;
     const note = lang === 'sc' ? (d.note_sc || d.note_tc) : d.note_tc;
-    const scheduleHtml = d.schedule.map(s => `
+    const scheduleHtml = d.schedule.map((s, idx) => `
       <div class="schedule-item">
         <div class="schedule-time">${s.time}</div>
         <div class="schedule-icon">${s.icon}</div>
         <div class="schedule-text">${lang === 'sc' ? s.sc : s.tc}</div>
+        <button class="btn-add-spot-tip" onclick="openTipModal('${d.day}', ${idx})" title="加備註">＋</button>
       </div>
+      <div class="spot-tips-container" id="tips-${d.day}-${idx}"></div>
     `).join('');
 
     return `
@@ -1737,8 +1795,6 @@ function renderTimeline(lang) {
           ${hotel ? `<div class="day-hotel">${hotel}</div>` : ''}
           ${note ? `<div class="schedule-note">${note}</div>` : ''}
           <div class="schedule">${scheduleHtml}</div>
-          <div class="day-tips-container" id="tips-${d.day}"></div>
-          <button class="btn-add-tip" onclick="openTipModal('${d.day}')">＋ 加貼士（食物 · 景點 · 注意事項）</button>
         </div>
       </div>
     `;
