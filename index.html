@@ -535,6 +535,31 @@
 
   .tip-cat-btn.selected { background: var(--orange-600); border-color: var(--orange-600); color: #fff; }
 
+  .tip-collapsible { cursor: pointer; }
+  .tip-more { color: var(--sand-300); font-size: 11px; }
+  .tip-expand-hint { color: var(--sand-300); font-size: 10px; letter-spacing: 0.5px; }
+
+  .tip-format-toolbar { display: flex; gap: 5px; margin-bottom: 6px; }
+
+  .tip-format-btn {
+    width: 30px; height: 28px;
+    border: 1px solid var(--sand-300);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    color: var(--ink-soft);
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .tip-format-btn:hover { border-color: var(--orange-500); }
+  .tip-format-btn.f-orange { color: var(--orange-600); }
+  .tip-format-btn.f-red { color: #c0392b; }
+  .tip-format-btn.f-teal { color: var(--teal); }
+
   /* === Map === */
   .map-section {
     background: white;
@@ -1163,6 +1188,12 @@
       <button class="tip-cat-btn" data-cat="warn" onclick="selectTipCat(this)">⚠️ 注意</button>
     </div>
     <label>內容</label>
+    <div class="tip-format-toolbar">
+      <button class="tip-format-btn" onclick="insertFmt('**','**')" title="粗體"><b>B</b></button>
+      <button class="tip-format-btn f-orange" onclick="insertFmt('[橙]','[/橙]')" title="橙色">橙</button>
+      <button class="tip-format-btn f-red" onclick="insertFmt('[紅]','[/紅]')" title="紅色">紅</button>
+      <button class="tip-format-btn f-teal" onclick="insertFmt('[藍]','[/藍]')" title="藍綠色">藍</button>
+    </div>
     <textarea id="tip-text" placeholder="例：附近有家大盤雞很好吃，記得點招牌酥肉…" style="height:90px"></textarea>
     <div class="diary-error" id="tip-error"></div>
     <div class="diary-modal-actions">
@@ -1683,6 +1714,40 @@ function initTips() {
     }, () => {});
 }
 
+function formatTipText(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[橙\](.*?)\[\/橙\]/g, '<span style="color:var(--orange-600)">$1</span>')
+    .replace(/\[紅\](.*?)\[\/紅\]/g, '<span style="color:#c0392b">$1</span>')
+    .replace(/\[藍\](.*?)\[\/藍\]/g, '<span style="color:var(--teal)">$1</span>')
+    .replace(/\n/g, '<br>');
+}
+
+function getPreview(text) {
+  const first = text.split('\n')[0];
+  return first.length > 75 ? first.slice(0, 75) : first;
+}
+
+function toggleTip(card) {
+  if (!card.classList.contains('tip-collapsible')) return;
+  const expanded = card.classList.toggle('expanded');
+  card.querySelector('.tip-full').style.display = expanded ? '' : 'none';
+  const more = card.querySelector('.tip-more');
+  if (more) more.style.display = expanded ? 'none' : '';
+  const hint = card.querySelector('.tip-expand-hint');
+  if (hint) hint.textContent = expanded ? '點擊收起' : '點擊展開';
+}
+
+function insertFmt(before, after) {
+  const ta = document.getElementById('tip-text');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const sel = ta.value.slice(s, e);
+  ta.value = ta.value.slice(0, s) + before + sel + after + ta.value.slice(e);
+  ta.focus();
+  ta.setSelectionRange(s + before.length, s + before.length + sel.length);
+}
+
 function renderTips(lang) {
   itinerary.forEach(day => {
     day.schedule.forEach((s, idx) => {
@@ -1691,16 +1756,21 @@ function renderTips(lang) {
       const spotTips = allTips.filter(t => t.day === day.day && t.scheduleIdx === idx);
       container.innerHTML = spotTips.map(t => {
         const cat = TIP_CATS[t.category] || TIP_CATS.info;
+        const preview = getPreview(t.text);
+        const needsExpand = t.text.includes('\n') || t.text.length > 75;
+        const deleteBtn = diaryUser && diaryUser.name === t.author
+          ? `<button class="btn-delete-tip" onclick="event.stopPropagation();deleteTip('${t.id}')">✕ 刪除</button>`
+          : '';
         return `
-          <div class="tip-card" data-cat="${t.category}">
+          <div class="tip-card ${needsExpand ? 'tip-collapsible' : ''}" data-cat="${t.category}" onclick="toggleTip(this)">
             <span class="tip-icon">${cat.icon}</span>
             <div class="tip-body">
-              <div>${t.text}</div>
+              <div class="tip-preview">${formatTipText(preview)}${needsExpand ? '<span class="tip-more">…</span>' : ''}</div>
+              ${needsExpand ? `<div class="tip-full" style="display:none">${formatTipText(t.text)}</div>` : ''}
               <div class="tip-author">
                 <span>${t.author}</span>
-                ${diaryUser && diaryUser.name === t.author
-                  ? `<button class="btn-delete-tip" onclick="deleteTip('${t.id}')">✕ 刪除</button>`
-                  : ''}
+                ${needsExpand ? '<span class="tip-expand-hint">點擊展開</span>' : ''}
+                ${deleteBtn}
               </div>
             </div>
           </div>`;
