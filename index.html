@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>北疆 15 日 · 絲路之約</title>
 
-<script src="https://webapi.amap.com/maps?v=2.0&key=9d77f4d629823a1039471552adabbb02&plugin=AMap.InfoWindow"></script>
+<script src="https://webapi.amap.com/maps?v=2.0&key=9d77f4d629823a1039471552adabbb02&plugin=AMap.InfoWindow,AMap.PlaceSearch"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -598,10 +598,18 @@
     filter: saturate(0.85) sepia(0.05);
   }
 
+  .map-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
   .map-legend {
     display: flex;
     gap: 24px;
-    margin-top: 20px;
     font-family: 'Inter', sans-serif;
     font-size: 12px;
     color: var(--ink-soft);
@@ -611,6 +619,90 @@
 
   .legend-item { display: flex; align-items: center; gap: 8px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange-500); }
+  .legend-dot-teal { background: var(--teal); }
+
+  .btn-add-location {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding: 7px 16px;
+    background: var(--teal);
+    color: var(--sand-50);
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .btn-add-location:hover { opacity: 0.85; }
+
+  /* Location search modal */
+  .location-modal-inner {
+    background: var(--sand-50);
+    border-radius: 6px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+  }
+  .location-search-row {
+    display: flex;
+    gap: 8px;
+    margin: 20px 0 16px;
+  }
+  .location-search-row input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--sand-200);
+    border-radius: 3px;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 14px;
+    background: white;
+  }
+  .btn-search-place {
+    padding: 9px 16px;
+    background: var(--orange-600);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-search-place:hover { background: var(--orange-700); }
+  .location-result-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--sand-100);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .location-result-item:last-child { border-bottom: none; }
+  .location-result-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+  .location-result-addr { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .btn-add-poi {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    background: var(--teal);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .btn-add-poi:hover { opacity: 0.85; }
+  .location-marker {
+    width: 28px;
+    height: 28px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    background: var(--teal);
+    border: 3px solid var(--sand-50);
+    box-shadow: 0 4px 12px rgba(45,106,95,0.4);
+  }
 
   /* === Footer === */
   footer {
@@ -1123,12 +1215,29 @@
     <h2 class="section-title" data-tc="行 <em>跡</em> 圖" data-sc="行 <em>迹</em> 图">行 <em>跡</em> 圖</h2>
     <p class="section-intro" data-tc="點擊地圖上的橙色標記,查看每天的目的地。本地圖採用高德地圖底圖,在中國境內顯示流暢。" data-sc="点击地图上的橙色标记,查看每天的目的地。本地图采用高德地图底图,在中国境内显示流畅。">點擊地圖上的橙色標記,查看每天的目的地。本地圖採用高德地圖底圖,在中國境內顯示流暢。</p>
     <div id="map"></div>
-    <div class="map-legend">
-      <div class="legend-item"><div class="legend-dot"></div><span data-tc="主要停留點" data-sc="主要停留点">主要停留點</span></div>
-      <div class="legend-item"><span data-tc="虛線為大致行車路線" data-sc="虚线为大致行车路线">虛線為大致行車路線</span></div>
+    <div class="map-bottom-bar">
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot"></div><span data-tc="行程景點" data-sc="行程景点">行程景點</span></div>
+        <div class="legend-item"><div class="legend-dot legend-dot-teal"></div><span data-tc="團員新增" data-sc="团员新增">團員新增</span></div>
+        <div class="legend-item"><span data-tc="虛線為大致行車路線" data-sc="虚线为大致行车路线">虛線為大致行車路線</span></div>
+      </div>
+      <button class="btn-add-location" id="btn-add-location" onclick="openLocationSearch()" style="display:none" data-tc="＋ 加地點" data-sc="＋ 加地点">＋ 加地點</button>
     </div>
   </div>
 </section>
+
+<!-- Location search modal -->
+<div id="location-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeLocationModal()">
+  <div class="location-modal-inner">
+    <button class="modal-close" onclick="closeLocationModal()">✕</button>
+    <h3 class="modal-title" data-tc="搜尋地點" data-sc="搜寻地点">搜尋地點</h3>
+    <div class="location-search-row">
+      <input type="text" id="location-search-input" placeholder="輸入餐廳、景點名稱..." onkeydown="if(event.key==='Enter')searchPlace()">
+      <button class="btn-search-place" onclick="searchPlace()">搜尋</button>
+    </div>
+    <div id="location-results"></div>
+  </div>
+</div>
 
 <!-- DIARY -->
 <section id="diary">
@@ -1566,14 +1675,17 @@ function updateAuthUI() {
   const loginBtn = document.getElementById('btn-diary-login');
   const writeBtn = document.getElementById('btn-diary-write');
   if (!status) return;
+  const addLocBtn = document.getElementById('btn-add-location');
   if (diaryUser) {
     status.innerHTML = `👤 <span class="diary-auth-name">${diaryUser.name}</span> · 已加入`;
     loginBtn.style.display = 'none';
     writeBtn.style.display = '';
+    if (addLocBtn) addLocBtn.style.display = '';
   } else {
     status.textContent = '尚未加入旅行團';
     loginBtn.style.display = '';
     writeBtn.style.display = 'none';
+    if (addLocBtn) addLocBtn.style.display = 'none';
   }
 }
 
@@ -1983,6 +2095,82 @@ function renderMarkers(lang) {
 map.on('click', () => map.setStatus({ scrollWheel: true }));
 map.on('mouseout', () => map.setStatus({ scrollWheel: false }));
 
+// ============ 團員地點 ============
+const locationMarkers = {};
+
+function openLocationSearch() {
+  if (!diaryUser) { openAuthModal(); return; }
+  document.getElementById('location-modal').style.display = 'flex';
+  document.getElementById('location-search-input').focus();
+}
+
+function closeLocationModal() {
+  document.getElementById('location-modal').style.display = 'none';
+  document.getElementById('location-results').innerHTML = '';
+  document.getElementById('location-search-input').value = '';
+}
+
+function searchPlace() {
+  const keyword = document.getElementById('location-search-input').value.trim();
+  if (!keyword) return;
+  const resultsDiv = document.getElementById('location-results');
+  resultsDiv.innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:13px">搜尋中...</div>';
+
+  const placeSearch = new AMap.PlaceSearch({ pageSize: 8, city: '新疆' });
+  placeSearch.search(keyword, (status, result) => {
+    if (status !== 'complete' || !result.poiList || !result.poiList.pois.length) {
+      resultsDiv.innerHTML = '<div style="padding:12px;color:var(--ink-soft);font-size:13px">找不到結果，試試更短的關鍵字</div>';
+      return;
+    }
+    resultsDiv.innerHTML = result.poiList.pois.map((poi, i) => `
+      <div class="location-result-item">
+        <div>
+          <div class="location-result-name">${poi.name}</div>
+          <div class="location-result-addr">${poi.address || poi.cityname || ''}</div>
+        </div>
+        <button class="btn-add-poi" onclick="addLocation(${i})">加入</button>
+      </div>
+    `).join('');
+    resultsDiv._pois = result.poiList.pois;
+  });
+}
+
+function addLocation(idx) {
+  const poi = document.getElementById('location-results')._pois[idx];
+  if (!poi || !poi.location) return;
+  db.collection('locations').add({
+    name: poi.name,
+    address: poi.address || '',
+    lng: poi.location.lng,
+    lat: poi.location.lat,
+    author: diaryUser.name,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(() => closeLocationModal());
+}
+
+function initLocations() {
+  db.collection('locations').orderBy('createdAt').onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'added') {
+        const d = change.doc.data();
+        if (!d.lng || !d.lat) return;
+        const marker = new AMap.Marker({
+          position: [d.lng, d.lat],
+          content: '<div class="location-marker"></div>',
+          offset: new AMap.Pixel(-14, -28)
+        });
+        const info = new AMap.InfoWindow({
+          content: `<strong style="font-size:14px;font-family:'Noto Serif TC',serif">${d.name}</strong><br><span style="color:var(--teal);font-size:11px">by ${d.author}</span>${d.address ? `<br><span style="font-size:11px;color:#888">${d.address}</span>` : ''}`,
+          offset: new AMap.Pixel(0, -30)
+        });
+        marker.on('click', () => info.open(map, marker.getPosition()));
+        map.add(marker);
+        locationMarkers[change.doc.id] = marker;
+      }
+    });
+  });
+}
+
 // ============ 語言切換 ============
 let currentLang = 'tc';
 
@@ -2013,6 +2201,7 @@ renderTimeline('tc');
 renderMarkers('tc');
 initDiary();
 initTips();
+initLocations();
 </script>
 
 </body>
