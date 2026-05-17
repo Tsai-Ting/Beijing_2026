@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>北疆 15 日 · 絲路之約</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Noto+Serif+TC:wght@300;400;500;600&family=Noto+Serif+SC:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --sand-50:  #FAF6EE;
+    --sand-100: #F2EADB;
+    --sand-200: #E5D5B7;
+    --sand-300: #C9B58A;
+    --orange-500: #C56A2C;
+    --orange-600: #A8531E;
+    --orange-700: #7E3D14;
+    --ink:      #2A1F14;
+    --ink-soft: #5C4A36;
+    --teal:     #2D6A5F;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Noto Serif TC', 'Noto Serif SC', serif;
+    background: var(--sand-50);
+    color: var(--ink);
+    line-height: 1.7;
+    font-weight: 400;
+    overflow-x: hidden;
+  }
+
+  body.lang-sc { font-family: 'Noto Serif SC', 'Noto Serif TC', serif; }
+
+  /* === Lang switch === */
+  .lang-switch {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 200;
+    background: rgba(250, 246, 238, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--sand-300);
+    border-radius: 24px;
+    padding: 4px;
+    display: flex;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+  }
+
+  .lang-switch button {
+    padding: 6px 14px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 20px;
+    color: var(--ink-soft);
+    transition: all 0.3s;
+    font-family: inherit;
+    letter-spacing: 1px;
+  }
+
+  .lang-switch button.active {
+    background: var(--orange-600);
+    color: var(--sand-50);
+  }
+
+  /* === Hero === */
+  .hero {
+    height: 100vh;
+    min-height: 600px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sand-50);
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(42,31,20,0.45) 0%, rgba(168,83,30,0.55) 60%, rgba(126,61,20,0.85) 100%),
+      url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1800&q=80') center/cover;
+  }
+
+  .hero-content {
+    position: relative;
+    text-align: center;
+    z-index: 2;
+    padding: 0 24px;
+    animation: fadeUp 1.2s ease-out;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-tag {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 24px;
+  }
+
+  .hero-tag::before, .hero-tag::after {
+    content: '—';
+    margin: 0 12px;
+    opacity: 0.6;
+  }
+
+  .hero h1 {
+    font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+    font-size: clamp(48px, 9vw, 96px);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(16px, 2.2vw, 22px);
+    font-weight: 300;
+    opacity: 0.95;
+    margin-bottom: 40px;
+    letter-spacing: 4px;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 48px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .hero-meta div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .hero-meta strong {
+    font-size: 26px;
+    font-weight: 300;
+    font-family: 'Cormorant Garamond', serif;
+  }
+
+  .hero-meta span {
+    opacity: 0.7;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    opacity: 0.7;
+    animation: bounce 2s infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(8px); }
+  }
+
+  /* === Nav === */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(250, 246, 238, 0.96);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--sand-200);
+    padding: 14px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .nav-brand {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+
+  .nav-brand em {
+    color: var(--orange-600);
+    font-style: italic;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  .nav-links a {
+    color: var(--ink-soft);
+    text-decoration: none;
+    transition: color 0.3s;
+    position: relative;
+  }
+
+  .nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--orange-600);
+    transition: width 0.3s;
+  }
+
+  .nav-links a:hover { color: var(--orange-600); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* === Sections === */
+  section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 100px 32px;
+  }
+
+  .section-tag {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--orange-600);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 400;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    letter-spacing: -0.5px;
+  }
+
+  .section-title em {
+    font-style: italic;
+    color: var(--orange-600);
+  }
+
+  .section-intro {
+    color: var(--ink-soft);
+    max-width: 600px;
+    margin-bottom: 64px;
+    font-size: 16px;
+  }
+
+  /* === Itinerary === */
+  .timeline {
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 60px;
+    top: 20px;
+    bottom: 20px;
+    width: 1px;
+    background: var(--sand-200);
+  }
+
+  .day {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 32px;
+    margin-bottom: 56px;
+    position: relative;
+    align-items: start;
+  }
+
+  .day-marker {
+    position: relative;
+    text-align: right;
+    padding-top: 4px;
+  }
+
+  .day-marker::after {
+    content: '';
+    position: absolute;
+    right: -28px;
+    top: 16px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--orange-500);
+    border: 3px solid var(--sand-50);
+    box-shadow: 0 0 0 1px var(--sand-200);
+    z-index: 1;
+  }
+
+  .day-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 56px;
+    font-weight: 300;
+    color: var(--orange-600);
+    line-height: 1;
+  }
+
+  .day-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 6px;
+  }
+
+  .day-content {
+    background: white;
+    border: 1px solid var(--sand-200);
+    border-radius: 4px;
+    padding: 28px 32px;
+    transition: all 0.4s ease;
+  }
+
+  .day-content:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(168, 83, 30, 0.08);
+  }
+
+  .day-title {
+    font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+    font-size: 24px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    line-height: 1.3;
+  }
+
+  .day-route {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--orange-600);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  .day-hotel {
+    display: inline-block;
+    background: var(--sand-100);
+    border-radius: 2px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 16px;
+  }
+
+  .day-hotel::before {
+    content: '◇ ';
+    color: var(--orange-500);
+  }
+
+  .schedule {
+    border-top: 1px dashed var(--sand-200);
+    padding-top: 16px;
+    margin-top: 12px;
+  }
+
+  .schedule-item {
+    display: grid;
+    grid-template-columns: 80px 24px 1fr;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 14px;
+    align-items: start;
+  }
+
+  .schedule-time {
+    font-family: 'Inter', sans-serif;
+    color: var(--orange-600);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 1px;
+    padding-top: 2px;
+  }
+
+  .schedule-icon {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .schedule-text { color: var(--ink); line-height: 1.6; }
+
+  .schedule-note {
+    background: var(--sand-100);
+    padding: 10px 14px;
+    border-left: 2px solid var(--orange-500);
+    margin: 8px 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .schedule-note strong { color: var(--orange-700); }
+
+  /* === Map === */
+  .map-section {
+    background: white;
+    padding: 100px 0;
+    border-top: 1px solid var(--sand-200);
+    border-bottom: 1px solid var(--sand-200);
+  }
+
+  .map-section-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  #map {
+    height: 600px;
+    border-radius: 4px;
+    border: 1px solid var(--sand-200);
+    margin-top: 32px;
+    filter: saturate(0.85) sepia(0.05);
+  }
+
+  .map-legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--orange-500); }
+
+  /* === Footer === */
+  footer {
+    background: var(--ink);
+    color: var(--sand-200);
+    padding: 60px 32px 32px;
+    text-align: center;
+  }
+
+  footer .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--sand-100);
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+  }
+
+  footer .logo em { color: var(--orange-500); font-style: italic; }
+
+  footer .quote {
+    font-style: italic;
+    max-width: 500px;
+    margin: 0 auto 32px;
+    font-size: 16px;
+    opacity: 0.7;
+    line-height: 1.8;
+  }
+
+  footer .meta {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    opacity: 0.5;
+    text-transform: uppercase;
+    padding-top: 24px;
+    border-top: 1px solid rgba(229,213,183,0.15);
+  }
+
+  /* === Map marker === */
+  .custom-marker {
+    background: var(--orange-600);
+    width: 30px;
+    height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid var(--sand-50);
+    box-shadow: 0 4px 12px rgba(168, 83, 30, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .custom-marker span {
+    transform: rotate(45deg);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .leaflet-popup-content-wrapper {
+    border-radius: 4px;
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  /* === Diary === */
+  /* === Diary (多人版) === */
+  #diary { background: var(--sand-100); }
+
+  .diary-auth-bar {
+    max-width: 860px;
+    margin: 0 auto 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--sand-50);
+    border-radius: 3px;
+    border: 1px solid var(--sand-200);
+    gap: 12px;
+  }
+
+  .diary-auth-status {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .diary-auth-name { color: var(--orange-600); font-weight: 500; }
+
+  .btn-diary-write, .btn-diary-login {
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-diary-write {
+    background: var(--orange-600);
+    color: var(--sand-50);
+    border: 0;
+  }
+
+  .btn-diary-write:hover { background: var(--orange-700); }
+
+  .btn-diary-login {
+    background: transparent;
+    color: var(--orange-600);
+    border: 1px solid var(--orange-600);
+  }
+
+  .btn-diary-login:hover { background: var(--orange-600); color: var(--sand-50); }
+
+  .diary-days { max-width: 860px; margin: 0 auto; }
+
+  .diary-day-section {
+    margin-bottom: 10px;
+    background: var(--sand-50);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--sand-200);
+  }
+
+  .diary-day-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+
+  .diary-day-header:hover { background: var(--sand-100); }
+
+  .diary-day-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .diary-day-num-badge {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    color: var(--orange-600);
+    white-space: nowrap;
+  }
+
+  .diary-day-title-text {
+    font-size: 15px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .diary-day-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .diary-entry-count {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .diary-chevron {
+    font-size: 18px;
+    color: var(--sand-300);
+    transition: transform 0.3s;
+    line-height: 1;
+  }
+
+  .diary-day-section.open .diary-chevron { transform: rotate(90deg); }
+
+  .diary-day-body {
+    display: none;
+    padding: 0 22px 18px;
+    border-top: 1px solid var(--sand-200);
+  }
+
+  .diary-day-section.open .diary-day-body { display: block; }
+
+  .diary-entry-card {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--sand-100);
+    cursor: pointer;
+  }
+
+  .diary-entry-card:last-child { border-bottom: 0; }
+
+  .diary-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .diary-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 13px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .diary-author { font-size: 14px; font-weight: 500; color: var(--ink); }
+
+  .diary-card-date {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-left: 6px;
+  }
+
+  .diary-card-text {
+    font-size: 14px;
+    line-height: 1.85;
+    color: var(--ink-soft);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .diary-entry-card.expanded .diary-card-text {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+
+  .diary-empty {
+    padding: 20px 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--sand-300);
+  }
+
+  .diary-write-inline-btn {
+    background: none; border: none;
+    color: var(--orange-500);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 0;
+    text-decoration: underline;
+  }
+
+  /* === Modals === */
+  .diary-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(42,31,20,0.5);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+
+  .diary-modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .diary-modal {
+    background: var(--sand-50);
+    border-radius: 4px;
+    padding: 36px 32px;
+    width: 90%;
+    max-width: 460px;
+    box-shadow: 0 20px 60px rgba(42,31,20,0.2);
+    transform: translateY(16px);
+    transition: transform 0.25s;
+  }
+
+  .diary-modal-overlay.open .diary-modal { transform: translateY(0); }
+
+  .diary-modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    color: var(--ink);
+    margin-bottom: 22px;
+  }
+
+  .diary-modal label {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 16px 0 5px;
+  }
+
+  .diary-modal input,
+  .diary-modal select,
+  .diary-modal textarea {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid var(--sand-300);
+    border-radius: 3px;
+    background: #fff;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+
+  .diary-modal input:focus,
+  .diary-modal select:focus,
+  .diary-modal textarea:focus { border-color: var(--orange-500); }
+
+  .diary-modal textarea { height: 130px; resize: vertical; line-height: 1.8; }
+
+  .diary-weather-picker { display: flex; gap: 8px; margin-top: 6px; }
+
+  .diary-weather-btn {
+    width: 40px; height: 40px;
+    border: 1px solid var(--sand-300);
+    border-radius: 50%;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .diary-weather-btn.selected {
+    border-color: var(--orange-500);
+    background: var(--sand-100);
+  }
+
+  .diary-modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+
+  .btn-cancel {
+    flex: 1; padding: 11px;
+    border: 1px solid var(--sand-300);
+    background: transparent;
+    border-radius: 3px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-cancel:hover { background: var(--sand-100); }
+
+  .btn-submit {
+    flex: 2; padding: 11px;
+    background: var(--orange-600);
+    color: var(--sand-50);
+    border: 0;
+    border-radius: 3px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-submit:hover { background: var(--orange-700); }
+  .btn-submit:disabled { background: var(--sand-300); cursor: not-allowed; }
+
+  .diary-error {
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    color: #c0392b;
+    margin-top: 8px;
+    min-height: 18px;
+  }
+
+  #write-photo-input { display: none; }
+
+  .diary-photo-drop {
+    border: 2px dashed var(--sand-300);
+    border-radius: 3px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 6px;
+  }
+
+  .diary-photo-drop:hover { border-color: var(--orange-500); }
+
+  .diary-photo-placeholder {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--sand-300);
+    padding: 18px;
+    text-align: center;
+  }
+
+  #write-photo-preview {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    display: none;
+  }
+
+  .diary-card-photo {
+    max-width: 100%;
+    max-height: 240px;
+    object-fit: contain;
+    border-radius: 2px;
+    margin-top: 10px;
+    display: block;
+  }
+
+  /* === Responsive === */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    nav { padding: 12px 20px; }
+    section { padding: 60px 20px; }
+    .lang-switch { top: 12px; right: 12px; }
+    .day {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .day-marker {
+      text-align: left;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+    .day-marker::after { display: none; }
+    .timeline::before { display: none; }
+    .day-content { padding: 20px; }
+    .day-number { font-size: 40px; }
+    .hero-meta { gap: 24px; }
+    .schedule-item { grid-template-columns: 60px 20px 1fr; gap: 8px; font-size: 13px; }
+    #map { height: 400px; }
+
+    .diary-auth-bar { flex-direction: column; align-items: flex-start; }
+    .diary-day-header { padding: 14px 16px; }
+    .diary-day-body { padding: 0 16px 14px; }
+    .diary-modal { padding: 28px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Language switch -->
+<div class="lang-switch">
+  <button class="active" data-lang="tc">繁體</button>
+  <button data-lang="sc">简体</button>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-tag" data-tc="XINJIANG · 北疆" data-sc="XINJIANG · 北疆">XINJIANG · 北疆</div>
+    <h1 data-tc="北疆十五日" data-sc="北疆十五日">北疆十五日</h1>
+    <div class="hero-subtitle" data-tc="絲 路 大 環 線 · 天 山 之 約" data-sc="丝 路 大 环 线 · 天 山 之 约">絲 路 大 環 線 · 天 山 之 約</div>
+    <div class="hero-meta">
+      <div><strong>15</strong><span data-tc="Days" data-sc="Days">Days</span></div>
+      <div><strong>14</strong><span data-tc="Nights" data-sc="Nights">Nights</span></div>
+      <div><strong>3500+</strong><span data-tc="Kilometers" data-sc="Kilometers">Kilometers</span></div>
+    </div>
+  </div>
+  <div class="scroll-indicator" data-tc="SCROLL · 往下捲" data-sc="SCROLL · 向下滑">SCROLL · 往下捲</div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">絲路 <em>Caravan</em></div>
+  <div class="nav-links">
+    <a href="#itinerary" data-tc="行程" data-sc="行程">行程</a>
+    <a href="#map" data-tc="地圖" data-sc="地图">地圖</a>
+    <a href="#diary" data-tc="日記" data-sc="日记">日記</a>
+    <a href="#contact" data-tc="聯絡" data-sc="联系">聯絡</a>
+  </div>
+</nav>
+
+<!-- ITINERARY -->
+<section id="itinerary">
+  <div class="section-tag">ITINERARY</div>
+  <h2 class="section-title" data-tc="十五日 <em>絲路</em> 之旅" data-sc="十五日 <em>丝路</em> 之旅">十五日 <em>絲路</em> 之旅</h2>
+  <p class="section-intro" data-tc="從烏魯木齊出發,沿著古代絲路北線,穿越沙漠、雪山、湖泊、草原。十五天,四千公里,一場與自然的深度對話。" data-sc="从乌鲁木齐出发,沿着古代丝路北线,穿越沙漠、雪山、湖泊、草原。十五天,四千公里,一场与自然的深度对话。">從烏魯木齊出發,沿著古代絲路北線,穿越沙漠、雪山、湖泊、草原。十五天,四千公里,一場與自然的深度對話。</p>
+
+  <div class="timeline" id="timeline"></div>
+</section>
+
+<!-- MAP -->
+<section id="map" class="map-section">
+  <div class="map-section-inner">
+    <div class="section-tag">ROUTE MAP</div>
+    <h2 class="section-title" data-tc="行 <em>跡</em> 圖" data-sc="行 <em>迹</em> 图">行 <em>跡</em> 圖</h2>
+    <p class="section-intro" data-tc="點擊地圖上的橙色標記,查看每天的目的地。本地圖採用高德地圖底圖,在中國境內顯示流暢。" data-sc="点击地图上的橙色标记,查看每天的目的地。本地图采用高德地图底图,在中国境内显示流畅。">點擊地圖上的橙色標記,查看每天的目的地。本地圖採用高德地圖底圖,在中國境內顯示流暢。</p>
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="legend-item"><div class="legend-dot"></div><span data-tc="主要停留點" data-sc="主要停留点">主要停留點</span></div>
+      <div class="legend-item"><span data-tc="虛線為大致行車路線" data-sc="虚线为大致行车路线">虛線為大致行車路線</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- DIARY -->
+<section id="diary">
+  <div class="section-tag">DIARY · 旅行手記</div>
+  <h2 class="section-title" data-tc="每個人的 <em>十五天</em>" data-sc="每个人的 <em>十五天</em>">每個人的 <em>十五天</em></h2>
+  <p class="section-intro" data-tc="十個人，十五天，十種視角。點開每一天，看大家在同一個地方看見了什麼。" data-sc="十个人，十五天，十种视角。点开每一天，看大家在同一个地方看见了什么。">十個人，十五天，十種視角。點開每一天，看大家在同一個地方看見了什麼。</p>
+
+  <div class="diary-auth-bar">
+    <span class="diary-auth-status" id="diary-auth-status">尚未加入旅行團</span>
+    <div>
+      <button class="btn-diary-login" id="btn-diary-login" onclick="openAuthModal()">加入旅行團</button>
+      <button class="btn-diary-write" id="btn-diary-write" style="display:none" onclick="openWriteModal(null)">✏ 寫日記</button>
+    </div>
+  </div>
+
+  <div class="diary-days" id="diary-days">
+    <div style="text-align:center;padding:40px;color:var(--sand-300);font-family:'Inter',sans-serif;font-size:13px;letter-spacing:1px">LOADING…</div>
+  </div>
+</section>
+
+<!-- Auth Modal -->
+<div class="diary-modal-overlay" id="auth-modal">
+  <div class="diary-modal">
+    <div class="diary-modal-title">加入旅行日記</div>
+    <label>你的名字</label>
+    <input type="text" id="auth-name" placeholder="小明、阿豪…" maxlength="10" autocomplete="off">
+    <label>旅行密碼</label>
+    <input type="password" id="auth-passcode" placeholder="由領隊告知" autocomplete="off">
+    <div class="diary-error" id="auth-error"></div>
+    <div class="diary-modal-actions">
+      <button class="btn-cancel" onclick="closeAuthModal()">取消</button>
+      <button class="btn-submit" onclick="submitAuth()">加入 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Write Modal -->
+<div class="diary-modal-overlay" id="write-modal">
+  <div class="diary-modal">
+    <div class="diary-modal-title">✏ 寫下今天</div>
+    <label>是哪一天</label>
+    <select id="write-day"></select>
+    <label>說說今天</label>
+    <textarea id="write-text" placeholder="用你的方式記下這一天…"></textarea>
+    <label>加一張照片（選填）</label>
+    <input type="file" id="write-photo-input" accept="image/*" onchange="previewPhoto(this)">
+    <label for="write-photo-input" class="diary-photo-drop">
+      <span class="diary-photo-placeholder" id="write-photo-placeholder">＋ 點此選擇照片</span>
+      <img id="write-photo-preview" alt="預覽">
+    </label>
+    <label>今天天氣</label>
+    <div class="diary-weather-picker">
+      <button class="diary-weather-btn selected" data-w="☀️" onclick="selectWeather(this)">☀️</button>
+      <button class="diary-weather-btn" data-w="⛅" onclick="selectWeather(this)">⛅</button>
+      <button class="diary-weather-btn" data-w="🌫" onclick="selectWeather(this)">🌫</button>
+      <button class="diary-weather-btn" data-w="🌧" onclick="selectWeather(this)">🌧</button>
+      <button class="diary-weather-btn" data-w="🌨" onclick="selectWeather(this)">🌨</button>
+    </div>
+    <div class="diary-error" id="write-error"></div>
+    <div class="diary-modal-actions">
+      <button class="btn-cancel" onclick="closeWriteModal()">取消</button>
+      <button class="btn-submit" id="write-submit" onclick="submitEntry()">發佈日記</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer id="contact">
+  <div class="logo">絲路 <em>Caravan</em></div>
+  <p class="quote" data-tc="「願你的腳步,踏遍千山萬水;<br>願你的故事,如駝鈴聲聲悠揚。」" data-sc="「愿你的脚步,踏遍千山万水;<br>愿你的故事,如驼铃声声悠扬。」">「願你的腳步,踏遍千山萬水;<br>願你的故事,如駝鈴聲聲悠揚。」</p>
+  <div class="meta">XINJIANG GRAND TOUR · 2026</div>
+</footer>
+
+<script>
+// ============ 行程資料 ============
+const itinerary = [
+  {
+    day: '01',
+    title_tc: '抵達烏魯木齊',
+    title_sc: '抵达乌鲁木齐',
+    route: 'TPE → SHA → URC',
+    hotel_tc: '柏曼酒店',
+    hotel_sc: '柏曼酒店',
+    schedule: [
+      { time: '12:20', icon: '✈', tc: '台北 → 上海', sc: '台北 → 上海' },
+      { time: '14:35', icon: '⏱', tc: '上海轉機等候', sc: '上海转机等候' },
+      { time: '18:30', icon: '✈', tc: '上海 → 烏魯木齊', sc: '上海 → 乌鲁木齐' },
+      { time: '23:55', icon: '🚗', tc: '接機 → 市區酒店', sc: '接机 → 市区酒店' }
+    ]
+  },
+  {
+    day: '02',
+    title_tc: '天山一日遊',
+    title_sc: '天山一日游',
+    route: 'URUMQI → TIANSHAN',
+    hotel_tc: '柏曼酒店',
+    hotel_sc: '柏曼酒店',
+    schedule: [
+      { time: '08:00', icon: '🚗', tc: '市區酒店 → 天山', sc: '市区酒店 → 天山' },
+      { time: '09:30', icon: '⛰', tc: '潛龍淵 · 天山天池 · 定海神針 · 馬牙山 · 西王母祖廟', sc: '潜龙渊 · 天山天池 · 定海神针 · 马牙山 · 西王母祖庙' },
+      { time: '17:30', icon: '🚗', tc: '天山 → 市區酒店', sc: '天山 → 市区酒店' },
+      { time: '19:00', icon: '🌃', tc: '自由活動 · 可逛大巴扎', sc: '自由活动 · 可逛大巴扎' }
+    ],
+    note_tc: '<strong>小提醒</strong>:午餐需自理'
+  },
+  {
+    day: '03',
+    title_tc: 'S21 沙漠公路 · 烏倫古湖',
+    title_sc: 'S21 沙漠公路 · 乌伦古湖',
+    route: 'URUMQI → ALTAY',
+    hotel_tc: '阿勒泰吉域合酒店',
+    hotel_sc: '阿勒泰吉域合酒店',
+    schedule: [
+      { time: '09:00', icon: '🚗', tc: '烏魯木齊 → 克拉美麗公園(走 S21 沙漠公路)', sc: '乌鲁木齐 → 克拉美丽公园(走 S21 沙漠公路)' },
+      { time: '11:00', icon: '🐫', tc: '克拉美麗公園 · 騎駱駝體驗', sc: '克拉美丽公园 · 骑骆驼体验' },
+      { time: '12:00', icon: '🚗', tc: '克拉美麗 → 烏倫古湖', sc: '克拉美丽 → 乌伦古湖' },
+      { time: '14:30', icon: '🏞', tc: '烏倫古湖 · 海上魔鬼城', sc: '乌伦古湖 · 海上魔鬼城' },
+      { time: '15:00', icon: '🚗', tc: '烏倫古湖 → 阿勒泰市區酒店', sc: '乌伦古湖 → 阿勒泰市区酒店' }
+    ],
+    note_tc: '<strong>S21 沙漠公路</strong>:穿越古爾班通古特沙漠(中國第二大沙漠)。公路筆直穿越沙丘,沿途有停車區可拍公路大片。',
+    note_sc: '<strong>S21 沙漠公路</strong>:穿越古尔班通古特沙漠(中国第二大沙漠)。公路笔直穿越沙丘,沿途有停车区可拍公路大片。'
+  },
+  {
+    day: '04',
+    title_tc: '阿禾公路 · 禾木騎馬',
+    title_sc: '阿禾公路 · 禾木骑马',
+    route: 'ALTAY → HEMU',
+    hotel_tc: '禾木桃源民宿',
+    hotel_sc: '禾木桃源民宿',
+    schedule: [
+      { time: '09:00', icon: '🚗', tc: '阿勒泰 → 禾木村(走阿禾公路)', sc: '阿勒泰 → 禾木村(走阿禾公路)' },
+      { time: '14:30', icon: '🚌', tc: '換乘區間車進入禾木村', sc: '换乘区间车进入禾木村' },
+      { time: '15:30', icon: '🐎', tc: '美麗峰騎馬體驗(約 2-3 小時)', sc: '美丽峰骑马体验(约 2-3 小时)' },
+      { time: '19:00', icon: '🏡', tc: '入住禾木老村小木屋 · 自由活動', sc: '入住禾木老村小木屋 · 自由活动' }
+    ]
+  },
+  {
+    day: '05',
+    title_tc: '禾木晨霧 · 喀納斯觀魚台',
+    title_sc: '禾木晨雾 · 喀纳斯观鱼台',
+    route: 'HEMU → KANAS',
+    hotel_tc: '喀納斯楠溪別院民宿',
+    hotel_sc: '喀纳斯楠溪别院民宿',
+    schedule: [
+      { time: '06:30', icon: '🌫', tc: '哈登觀景台 · 禾木晨霧(需步行 30 分鐘)', sc: '哈登观景台 · 禾木晨雾(需步行 30 分钟)' },
+      { time: '08:30', icon: '📷', tc: '禾木村旅拍(約 3 小時)', sc: '禾木村旅拍(约 3 小时)' },
+      { time: '12:00', icon: '🚗', tc: '禾木村 → 喀納斯換乘中心', sc: '禾木村 → 喀纳斯换乘中心' },
+      { time: '14:30', icon: '⛰', tc: '觀魚台(攀登 1068 級台階)', sc: '观鱼台(攀登 1068 级台阶)' },
+      { time: '17:00', icon: '🏞', tc: '喀納斯湖湖邊棧道', sc: '喀纳斯湖湖边栈道' }
+    ],
+    note_tc: '<strong>禾木晨霧</strong>(必看):6 月晨霧大概在 6:30 - 8:00 之間,建議 6:00 開始走去哈登觀景台。觀魚台是唯一能俯瞰喀納斯湖全貌與友誼峰冰川的制高點。',
+    note_sc: '<strong>禾木晨雾</strong>(必看):6 月晨雾大概在 6:30 - 8:00 之间,建议 6:00 开始走去哈登观景台。观鱼台是唯一能俯瞰喀纳斯湖全貌与友谊峰冰川的制高点。'
+  },
+  {
+    day: '06',
+    title_tc: '喀納斯三灣 · 世界魔鬼城',
+    title_sc: '喀纳斯三湾 · 世界魔鬼城',
+    route: 'KANAS → KARAMAY',
+    hotel_tc: '克拉瑪依錦江都城酒店',
+    hotel_sc: '克拉玛依锦江都城酒店',
+    schedule: [
+      { time: '08:00', icon: '🌫', tc: '神仙灣 · 月亮灣 · 臥龍灣(含徒步)', sc: '神仙湾 · 月亮湾 · 卧龙湾(含徒步)' },
+      { time: '14:00', icon: '🚗', tc: '喀納斯 → 布爾津 → 烏爾禾', sc: '喀纳斯 → 布尔津 → 乌尔禾' },
+      { time: '19:00', icon: '🏜', tc: '世界魔鬼城(乘小火車遊覽)', sc: '世界魔鬼城(乘小火车游览)' },
+      { time: '20:30', icon: '🚗', tc: '世界魔鬼城 → 克拉瑪依市區', sc: '世界魔鬼城 → 克拉玛依市区' }
+    ],
+    note_tc: '<strong>世界魔鬼城</strong>:《臥虎藏龍》取景地。強烈建議遊玩至傍晚,夕陽下土丘呈金紅色,最為壯觀。',
+    note_sc: '<strong>世界魔鬼城</strong>:《卧虎藏龙》取景地。强烈建议游玩至傍晚,夕阳下土丘呈金红色,最为壮观。'
+  },
+  {
+    day: '07',
+    title_tc: '獨庫公路 · 仙女湖騎馬',
+    title_sc: '独库公路 · 仙女湖骑马',
+    route: 'KARAMAY → TANGBULA',
+    hotel_tc: '尼勒克小滿民宿',
+    hotel_sc: '尼勒克小满民宿',
+    schedule: [
+      { time: '09:00', icon: '🚗', tc: '克拉瑪依 → 喬爾瑪服務區(走獨庫公路 G217 北段)', sc: '克拉玛依 → 乔尔玛服务区(走独库公路 G217 北段)' },
+      { time: '14:00', icon: '🍴', tc: '喬爾瑪服務區午餐 · 瞻仰烈士紀念碑', sc: '乔尔玛服务区午餐 · 瞻仰烈士纪念碑' },
+      { time: '15:00', icon: '🚗', tc: '喬爾瑪 → 唐布拉(走 S315 百里畫廊)', sc: '乔尔玛 → 唐布拉(走 S315 百里画廊)' },
+      { time: '15:30', icon: '🐎', tc: '仙女湖騎馬(約 3 小時)', sc: '仙女湖骑马(约 3 小时)' },
+      { time: '19:00', icon: '🏡', tc: '入住唐布拉鎮民宿', sc: '入住唐布拉镇民宿' }
+    ],
+    note_tc: '<strong>獨庫公路北段</strong>:體驗「一天有四季」。翻越哈希勒根達坂(防雪長廊),6 月可見雪牆、瀑布與高山草甸。仙女湖是未完全開發的秘境,比那拉提更原始。',
+    note_sc: '<strong>独库公路北段</strong>:体验「一天有四季」。翻越哈希勒根达坂(防雪长廊),6 月可见雪墙、瀑布与高山草甸。仙女湖是未完全开发的秘境,比那拉提更原始。'
+  },
+  {
+    day: '08',
+    title_tc: '那拉提草原 · 哈薩克家訪',
+    title_sc: '那拉提草原 · 哈萨克家访',
+    route: 'TANGBULA → NALATI',
+    hotel_tc: '那拉提宿心壹號院',
+    hotel_sc: '那拉提宿心壹号院',
+    schedule: [
+      { time: '09:00', icon: '🚗', tc: '唐布拉 → 那拉提', sc: '唐布拉 → 那拉提' },
+      { time: '11:30', icon: '🌿', tc: '那拉提空中草原(雪蓮谷 · 遊牧人家)', sc: '那拉提空中草原(雪莲谷 · 游牧人家)' },
+      { time: '15:00', icon: '🍵', tc: '哈薩克牧民家訪 · 草原下午茶', sc: '哈萨克牧民家访 · 草原下午茶' },
+      { time: '19:00', icon: '🏡', tc: '入住那拉提民宿', sc: '入住那拉提民宿' }
+    ]
+  },
+  {
+    day: '09',
+    title_tc: '昭蘇濕地 · 天馬浴河',
+    title_sc: '昭苏湿地 · 天马浴河',
+    route: 'NALATI → ZHAOSU',
+    hotel_tc: '迦薩甘夏塔遊學營地',
+    hotel_sc: '迦萨甘夏塔游学营地',
+    schedule: [
+      { time: '09:00', icon: '🚗', tc: '那拉提 → 恰甫其海', sc: '那拉提 → 恰甫其海' },
+      { time: '11:30', icon: '🏞', tc: '恰甫其海打卡(新疆馬爾地夫)', sc: '恰甫其海打卡(新疆马尔代夫)' },
+      { time: '13:00', icon: '🚗', tc: '恰甫其海 → 昭蘇濕地公園', sc: '恰甫其海 → 昭苏湿地公园' },
+      { time: '16:00', icon: '🐎', tc: '天馬浴河表演(13:30 / 17:30 場次)', sc: '天马浴河表演(13:30 / 17:30 场次)' },
+      { time: '20:00', icon: '🚗', tc: '昭蘇 → 夏塔景區酒店', sc: '昭苏 → 夏塔景区酒店' }
+    ],
+    note_tc: '<strong>天馬浴河</strong>:萬馬奔騰過河的壯觀景象,昭蘇招牌項目。',
+    note_sc: '<strong>天马浴河</strong>:万马奔腾过河的壮观景象,昭苏招牌项目。'
+  },
+  {
+    day: '10',
+    title_tc: '夏塔徒步 · 伊昭公路',
+    title_sc: '夏塔徒步 · 伊昭公路',
+    route: 'XIATA → YINING',
+    hotel_tc: '伊寧環球六星街麗呈酒店',
+    hotel_sc: '伊宁环球六星街丽呈酒店',
+    schedule: [
+      { time: '08:00', icon: '🥾', tc: '夏塔徒步(約 7 小時)', sc: '夏塔徒步(约 7 小时)' },
+      { time: '15:00', icon: '🚗', tc: '夏塔 → 伊寧(走伊昭公路 S237)', sc: '夏塔 → 伊宁(走伊昭公路 S237)' },
+      { time: '20:00', icon: '🌆', tc: '伊寧市區自由活動', sc: '伊宁市区自由活动' }
+    ],
+    note_tc: '<strong>伊昭公路</strong>(若開放):翻越烏孫山,路況險峻不輸獨庫,被稱為「小獨庫」。沿途可見白石峰,風景絕美。若封路則需繞行特克斯。',
+    note_sc: '<strong>伊昭公路</strong>(若开放):翻越乌孙山,路况险峻不输独库,被称为「小独库」。沿途可见白石峰,风景绝美。若封路则需绕行特克斯。'
+  },
+  {
+    day: '11',
+    title_tc: '薰衣草 · 賽里木湖',
+    title_sc: '薰衣草 · 赛里木湖',
+    route: 'YINING → SAYRAM',
+    hotel_tc: '賽里木湖望山一號院子',
+    hotel_sc: '赛里木湖望山一号院子',
+    schedule: [
+      { time: '08:00', icon: '📷', tc: '伊寧市區旅拍', sc: '伊宁市区旅拍' },
+      { time: '12:00', icon: '🚗', tc: '伊寧 → 晃晃村薰衣草園', sc: '伊宁 → 晃晃村薰衣草园' },
+      { time: '13:00', icon: '🌸', tc: '晃晃村薰衣草', sc: '晃晃村薰衣草' },
+      { time: '15:00', icon: '🌉', tc: '途觀果子溝大橋', sc: '途观果子沟大桥' },
+      { time: '16:00', icon: '🏞', tc: '賽里木湖環湖', sc: '赛里木湖环湖' },
+      { time: '20:00', icon: '🏡', tc: '入住賽里木湖東門酒店', sc: '入住赛里木湖东门酒店' }
+    ],
+    note_tc: '<strong>果子溝大橋</strong>:新疆第一高橋,在車上抓拍其穿梭於峽谷的壯觀。',
+    note_sc: '<strong>果子沟大桥</strong>:新疆第一高桥,在车上抓拍其穿梭于峡谷的壮观。'
+  },
+  {
+    day: '12',
+    title_tc: '賽里木湖一日',
+    title_sc: '赛里木湖一日',
+    route: 'SAYRAM',
+    hotel_tc: '西渡(精河)酒店',
+    hotel_sc: '西渡(精河)酒店',
+    schedule: [
+      { time: '06:00', icon: '🌅', tc: '賽里木湖日出', sc: '赛里木湖日出' },
+      { time: '10:00', icon: '⛵', tc: '帆船體驗', sc: '帆船体验' },
+      { time: '17:00', icon: '🌇', tc: '賽里木湖日落', sc: '赛里木湖日落' },
+      { time: '20:00', icon: '🚗', tc: '入住精河縣酒店', sc: '入住精河县酒店' }
+    ]
+  },
+  {
+    day: '13',
+    title_tc: '安集海大峽谷 · 返烏魯木齊',
+    title_sc: '安集海大峡谷 · 返乌鲁木齐',
+    route: 'JINGHE → URUMQI',
+    hotel_tc: '柏曼酒店',
+    hotel_sc: '柏曼酒店',
+    schedule: [
+      { time: '10:00', icon: '🚗', tc: '精河縣 → 安集海大峽谷', sc: '精河县 → 安集海大峡谷' },
+      { time: '13:45', icon: '🏞', tc: '安集海大峽谷', sc: '安集海大峡谷' },
+      { time: '15:00', icon: '🚗', tc: '安集海 → 烏魯木齊', sc: '安集海 → 乌鲁木齐' },
+      { time: '18:00', icon: '🌃', tc: '烏魯木齊市區自由活動', sc: '乌鲁木齐市区自由活动' }
+    ]
+  },
+  {
+    day: '14',
+    title_tc: '飛上海 · 外灘豫園',
+    title_sc: '飞上海 · 外滩豫园',
+    route: 'URC → SHA',
+    hotel_tc: '雲和夜泊酒店',
+    hotel_sc: '云和夜泊酒店',
+    schedule: [
+      { time: '11:05', icon: '✈', tc: '烏魯木齊 → 上海浦東', sc: '乌鲁木齐 → 上海浦东' },
+      { time: '16:30', icon: '🚇', tc: '機場 → 酒店', sc: '机场 → 酒店' },
+      { time: '18:00', icon: '🍴', tc: '吃晚餐', sc: '吃晚餐' },
+      { time: '19:00', icon: '🌃', tc: '外灘 / 豫園', sc: '外滩 / 豫园' }
+    ]
+  },
+  {
+    day: '15',
+    title_tc: '上海 → 台灣',
+    title_sc: '上海 → 台湾',
+    route: 'SHA → TPE',
+    hotel_tc: '',
+    hotel_sc: '',
+    schedule: [
+      { time: '14:15', icon: '✈', tc: '上海 → 台灣 · 平安返家', sc: '上海 → 台湾 · 平安返家' }
+    ]
+  }
+];
+
+// ============ Firebase 日記系統 ============
+// 🔧 到 Firebase Console → 專案設定 → 你的應用程式，把設定填進來
+const firebaseConfig = {
+  apiKey:            "AIzaSyBp78FpRPxAoDokT_ft5OP0egfUwHa7OYw",
+  authDomain:        "xinjiang-2026.firebaseapp.com",
+  projectId:         "xinjiang-2026",
+  storageBucket:     "xinjiang-2026.firebasestorage.app",
+  messagingSenderId: "220626037988",
+  appId:             "1:220626037988:web:2564fcef2ad87486f2d0f1"
+};
+
+let db = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch(e) {
+  console.warn('Firebase 尚未設定，日記功能暫時離線');
+}
+
+// -------- 狀態 --------
+let diaryUser = null;
+let diaryEntries = [];
+let selectedWeather = '☀️';
+
+// -------- 顏色 --------
+const AVATAR_COLORS = ['#C56A2C','#2D6A5F','#7E3D14','#1a5276','#7d6608','#4a235a','#922b21','#1e8449'];
+function authorColor(name) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+// -------- 初始化 --------
+function initDiary() {
+  const saved = localStorage.getItem('xinjiang_diary');
+  if (saved) { diaryUser = JSON.parse(saved); updateAuthUI(); }
+
+  if (!db) { renderDiaryDays(currentLang); return; }
+
+  db.collection('entries')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(snap => {
+      diaryEntries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderDiaryDays(currentLang);
+    }, () => renderDiaryDays(currentLang));
+}
+
+// -------- 渲染天數列表 --------
+function renderDiaryDays(lang) {
+  const container = document.getElementById('diary-days');
+  if (!container) return;
+
+  container.innerHTML = itinerary.map(day => {
+    const title = lang === 'sc' ? day.title_sc : day.title_tc;
+    const dayEntries = diaryEntries.filter(e => e.day === day.day);
+    const count = dayEntries.length;
+
+    const cardsHtml = count > 0
+      ? dayEntries.map(e => {
+          const initials = [...e.author].slice(0, 2).join('');
+          const color = authorColor(e.author);
+          const dateStr = e.createdAt?.toDate
+            ? e.createdAt.toDate().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })
+            : '';
+          return `
+            <div class="diary-entry-card" onclick="this.classList.toggle('expanded')">
+              <div class="diary-card-header">
+                <div class="diary-avatar" style="background:${color}">${initials}</div>
+                <div>
+                  <span class="diary-author">${e.author}</span>
+                  <span class="diary-card-date">${dateStr} ${e.weather || ''}</span>
+                </div>
+              </div>
+              <div class="diary-card-text">${e.text.replace(/\n/g,'<br>')}</div>
+              ${e.photoURL ? `<img class="diary-card-photo" src="${e.photoURL}" loading="lazy" alt="">` : ''}
+            </div>`;
+        }).join('')
+      : `<div class="diary-empty">還沒有人寫這天 · <button class="diary-write-inline-btn" onclick="openWriteModal('${day.day}')">搶先發文</button></div>`;
+
+    return `
+      <div class="diary-day-section">
+        <div class="diary-day-header" onclick="toggleDiaryDay(this)">
+          <div class="diary-day-info">
+            <span class="diary-day-num-badge">DAY ${parseInt(day.day)}</span>
+            <span class="diary-day-title-text">${title}</span>
+          </div>
+          <div class="diary-day-meta">
+            <span class="diary-entry-count">${count > 0 ? count + ' 篇' : '—'}</span>
+            <span class="diary-chevron">›</span>
+          </div>
+        </div>
+        <div class="diary-day-body">${cardsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleDiaryDay(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+// -------- Auth UI --------
+function updateAuthUI() {
+  const status = document.getElementById('diary-auth-status');
+  const loginBtn = document.getElementById('btn-diary-login');
+  const writeBtn = document.getElementById('btn-diary-write');
+  if (!status) return;
+  if (diaryUser) {
+    status.innerHTML = `👤 <span class="diary-auth-name">${diaryUser.name}</span> · 已加入`;
+    loginBtn.style.display = 'none';
+    writeBtn.style.display = '';
+  } else {
+    status.textContent = '尚未加入旅行團';
+    loginBtn.style.display = '';
+    writeBtn.style.display = 'none';
+  }
+}
+
+// -------- Auth Modal --------
+function openAuthModal() {
+  document.getElementById('auth-modal').classList.add('open');
+  setTimeout(() => document.getElementById('auth-name').focus(), 50);
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open');
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function submitAuth() {
+  const name = document.getElementById('auth-name').value.trim();
+  const passcode = document.getElementById('auth-passcode').value.trim();
+  const errEl = document.getElementById('auth-error');
+
+  if (!name) { errEl.textContent = '請輸入你的名字'; return; }
+  if (!passcode) { errEl.textContent = '請輸入旅行密碼'; return; }
+  if (!db) { errEl.textContent = 'Firebase 尚未設定，請聯繫領隊'; return; }
+
+  try {
+    const doc = await db.collection('config').doc('settings').get();
+    if (!doc.exists || doc.data().passcode !== passcode) {
+      errEl.textContent = '密碼不對，再問一下領隊 🙈'; return;
+    }
+    diaryUser = { name };
+    localStorage.setItem('xinjiang_diary', JSON.stringify(diaryUser));
+    updateAuthUI();
+    closeAuthModal();
+  } catch(e) {
+    errEl.textContent = '連線錯誤，請稍後再試';
+  }
+}
+
+// -------- Cloudinary 照片上傳 --------
+const CLOUDINARY_CLOUD = 'dy3jyj9kv';
+const CLOUDINARY_PRESET = 'xinjiang-2026';
+
+function previewPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('write-photo-placeholder').style.display = 'none';
+    const preview = document.getElementById('write-photo-preview');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadToCloudinary(file) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST', body: form
+  });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error('上傳失敗');
+  return data.secure_url;
+}
+
+// -------- Write Modal --------
+function openWriteModal(preDay) {
+  if (!diaryUser) { openAuthModal(); return; }
+  const sel = document.getElementById('write-day');
+  sel.innerHTML = itinerary.map(d =>
+    `<option value="${d.day}" ${d.day === preDay ? 'selected' : ''}>Day ${parseInt(d.day)} · ${d.title_tc}</option>`
+  ).join('');
+  document.getElementById('write-text').value = '';
+  document.getElementById('write-error').textContent = '';
+  document.getElementById('write-photo-input').value = '';
+  document.getElementById('write-photo-placeholder').style.display = '';
+  document.getElementById('write-photo-preview').style.display = 'none';
+  selectedWeather = '☀️';
+  document.querySelectorAll('.diary-weather-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.w === '☀️'));
+  document.getElementById('write-modal').classList.add('open');
+  setTimeout(() => document.getElementById('write-text').focus(), 50);
+}
+
+function closeWriteModal() {
+  document.getElementById('write-modal').classList.remove('open');
+}
+
+function selectWeather(btn) {
+  selectedWeather = btn.dataset.w;
+  document.querySelectorAll('.diary-weather-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function submitEntry() {
+  const day = document.getElementById('write-day').value;
+  const text = document.getElementById('write-text').value.trim();
+  const errEl = document.getElementById('write-error');
+  const submitBtn = document.getElementById('write-submit');
+
+  if (!text || text.length < 5) { errEl.textContent = '再多說一點？ ✍'; return; }
+  if (!db) { errEl.textContent = 'Firebase 尚未設定'; return; }
+
+  submitBtn.disabled = true;
+
+  try {
+    let photoURL = null;
+    const photoFile = document.getElementById('write-photo-input').files[0];
+    if (photoFile) {
+      submitBtn.textContent = '上傳照片中…';
+      photoURL = await uploadToCloudinary(photoFile);
+    }
+    submitBtn.textContent = '發佈中…';
+    await db.collection('entries').add({
+      day,
+      author: diaryUser.name,
+      text,
+      weather: selectedWeather,
+      photoURL,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeWriteModal();
+  } catch(e) {
+    errEl.textContent = '發佈失敗，請稍後再試';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = '發佈日記';
+  }
+}
+
+// 按 ESC 關閉 modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeAuthModal(); closeWriteModal(); }
+});
+
+// ============ 渲染行程 ============
+function renderTimeline(lang) {
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = itinerary.map(d => {
+    const title = lang === 'sc' ? d.title_sc : d.title_tc;
+    const hotel = lang === 'sc' ? d.hotel_sc : d.hotel_tc;
+    const note = lang === 'sc' ? (d.note_sc || d.note_tc) : d.note_tc;
+    const scheduleHtml = d.schedule.map(s => `
+      <div class="schedule-item">
+        <div class="schedule-time">${s.time}</div>
+        <div class="schedule-icon">${s.icon}</div>
+        <div class="schedule-text">${lang === 'sc' ? s.sc : s.tc}</div>
+      </div>
+    `).join('');
+
+    return `
+      <div class="day">
+        <div class="day-marker">
+          <div class="day-number">${d.day}</div>
+          <div class="day-label">Day ${parseInt(d.day)}</div>
+        </div>
+        <div class="day-content">
+          <h3 class="day-title">${title}</h3>
+          <div class="day-route">${d.route}</div>
+          ${hotel ? `<div class="day-hotel">${hotel}</div>` : ''}
+          ${note ? `<div class="schedule-note">${note}</div>` : ''}
+          <div class="schedule">${scheduleHtml}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============ 地圖 ============
+const map = L.map('map', {
+  zoomControl: true,
+  scrollWheelZoom: false
+}).setView([45.0, 85.5], 6);
+
+L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+  subdomains: ['1', '2', '3', '4'],
+  attribution: '© 高德地圖 AutoNavi',
+  maxZoom: 18
+}).addTo(map);
+
+const spots = [
+  { day: '1·2·13', name_tc: '烏魯木齊', name_sc: '乌鲁木齐', desc_tc: '出發 / 返回據點', desc_sc: '出发 / 返回据点', coords: [43.825592, 87.616848] },
+  { day: '2', name_tc: '天山天池', name_sc: '天山天池', desc_tc: '高山湖泊 · 西王母祖廟', desc_sc: '高山湖泊 · 西王母祖庙', coords: [43.881111, 88.106667] },
+  { day: '3', name_tc: '阿勒泰', name_sc: '阿勒泰', desc_tc: 'S21 沙漠公路 · 烏倫古湖', desc_sc: 'S21 沙漠公路 · 乌伦古湖', coords: [47.846667, 88.131389] },
+  { day: '4', name_tc: '禾木村', name_sc: '禾木村', desc_tc: '美麗峰騎馬 · 圖瓦人家', desc_sc: '美丽峰骑马 · 图瓦人家', coords: [48.652222, 87.105556] },
+  { day: '5', name_tc: '喀納斯湖', name_sc: '喀纳斯湖', desc_tc: '觀魚台 · 神的後花園', desc_sc: '观鱼台 · 神的后花园', coords: [48.733333, 87.016667] },
+  { day: '6', name_tc: '世界魔鬼城', name_sc: '世界魔鬼城', desc_tc: '雅丹地貌 · 臥虎藏龍取景', desc_sc: '雅丹地貌 · 卧虎藏龙取景', coords: [46.083333, 85.683333] },
+  { day: '6', name_tc: '克拉瑪依', name_sc: '克拉玛依', desc_tc: '住宿', desc_sc: '住宿', coords: [45.595886, 84.889028] },
+  { day: '7', name_tc: '唐布拉', name_sc: '唐布拉', desc_tc: '獨庫公路 · 仙女湖騎馬', desc_sc: '独库公路 · 仙女湖骑马', coords: [43.7833, 84.0500] },
+  { day: '8', name_tc: '那拉提草原', name_sc: '那拉提草原', desc_tc: '空中草原 · 哈薩克家訪', desc_sc: '空中草原 · 哈萨克家访', coords: [43.286667, 84.176389] },
+  { day: '9', name_tc: '昭蘇濕地', name_sc: '昭苏湿地', desc_tc: '天馬浴河', desc_sc: '天马浴河', coords: [43.158056, 81.131389] },
+  { day: '10', name_tc: '夏塔 → 伊寧', name_sc: '夏塔 → 伊宁', desc_tc: '夏塔徒步 · 伊昭公路', desc_sc: '夏塔徒步 · 伊昭公路', coords: [43.913889, 81.317778] },
+  { day: '11·12', name_tc: '賽里木湖', name_sc: '赛里木湖', desc_tc: '高山湖泊 · 帆船', desc_sc: '高山湖泊 · 帆船', coords: [44.611111, 81.181944] },
+  { day: '13', name_tc: '安集海大峽谷', name_sc: '安集海大峡谷', desc_tc: '色彩峽谷', desc_sc: '色彩峡谷', coords: [44.327778, 85.4] }
+];
+
+function renderMarkers(lang) {
+  spots.forEach(s => {
+    const icon = L.divIcon({
+      className: 'custom-marker-wrapper',
+      html: `<div class="custom-marker"><span>${s.day}</span></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30]
+    });
+    L.marker(s.coords, { icon })
+      .bindPopup(`<strong style="font-size: 15px;">${lang === 'sc' ? s.name_sc : s.name_tc}</strong><br><span style="color: #7E3D14; font-size: 12px;">${lang === 'sc' ? s.desc_sc : s.desc_tc}</span>`)
+      .addTo(map);
+  });
+
+  const route = spots.map(s => s.coords);
+  L.polyline(route, {
+    color: '#A8531E',
+    weight: 2.5,
+    opacity: 0.7,
+    dashArray: '6, 8'
+  }).addTo(map);
+}
+
+map.on('click', () => map.scrollWheelZoom.enable());
+map.on('mouseout', () => map.scrollWheelZoom.disable());
+
+// ============ 語言切換 ============
+let currentLang = 'tc';
+
+function setLang(lang) {
+  currentLang = lang;
+  document.body.classList.toggle('lang-sc', lang === 'sc');
+  document.documentElement.lang = lang === 'sc' ? 'zh-Hans' : 'zh-Hant';
+
+  document.querySelectorAll('[data-tc]').forEach(el => {
+    el.innerHTML = lang === 'sc' ? el.dataset.sc : el.dataset.tc;
+  });
+
+  document.querySelectorAll('.lang-switch button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+
+  renderTimeline(lang);
+  renderDiaryDays(lang);
+}
+
+document.querySelectorAll('.lang-switch button').forEach(b => {
+  b.addEventListener('click', () => setLang(b.dataset.lang));
+});
+
+// 初始渲染
+renderTimeline('tc');
+renderMarkers('tc');
+initDiary();
+</script>
+
+</body>
+</html>
