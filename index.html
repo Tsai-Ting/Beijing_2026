@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>北疆 15 日 · 絲路之約</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://webapi.amap.com/maps?v=2.0&key=9d77f4d629823a1039471552adabbb02&plugin=AMap.InfoWindow"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -673,9 +672,11 @@
     font-weight: 500;
   }
 
-  .leaflet-popup-content-wrapper {
+  .amap-info-content {
     border-radius: 4px;
     font-family: 'Noto Serif TC', serif;
+    padding: 10px 14px;
+    box-shadow: 0 4px 16px rgba(42,31,20,0.15);
   }
 
   /* === Diary === */
@@ -1901,16 +1902,38 @@ function renderTimeline(lang) {
 }
 
 // ============ 地圖 ============
-const map = L.map('map', {
-  zoomControl: true,
-  scrollWheelZoom: false
-}).setView([45.0, 85.5], 6);
+// WGS-84 → GCJ-02 座標轉換（修正高德地圖約 500m 偏移）
+function wgs84ToGcj02(lat, lng) {
+  const a = 6378245.0, ee = 0.00669342162296594323;
+  if (lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271) return [lat, lng];
+  let dLat = _txLat(lng - 105, lat - 35);
+  let dLng = _txLng(lng - 105, lat - 35);
+  const r = lat / 180 * Math.PI;
+  let m = Math.sin(r); m = 1 - ee * m * m;
+  const sq = Math.sqrt(m);
+  return [lat + dLat * 180 / ((a * (1 - ee)) / (m * sq) * Math.PI),
+          lng + dLng * 180 / (a / sq * Math.cos(r) * Math.PI)];
+}
+function _txLat(x, y) {
+  let r = -100 + 2*x + 3*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+  r += (20*Math.sin(6*x*Math.PI) + 20*Math.sin(2*x*Math.PI)) * 2/3;
+  r += (20*Math.sin(y*Math.PI) + 40*Math.sin(y/3*Math.PI)) * 2/3;
+  r += (160*Math.sin(y/12*Math.PI) + 320*Math.sin(y*Math.PI/30)) * 2/3;
+  return r;
+}
+function _txLng(x, y) {
+  let r = 300 + x + 2*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+  r += (20*Math.sin(6*x*Math.PI) + 20*Math.sin(2*x*Math.PI)) * 2/3;
+  r += (20*Math.sin(x*Math.PI) + 40*Math.sin(x/3*Math.PI)) * 2/3;
+  r += (150*Math.sin(x/12*Math.PI) + 300*Math.sin(x/30*Math.PI)) * 2/3;
+  return r;
+}
 
-L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
-  subdomains: ['1', '2', '3', '4'],
-  attribution: '© 高德地圖 AutoNavi',
-  maxZoom: 18
-}).addTo(map);
+const map = new AMap.Map('map', {
+  zoom: 6,
+  center: [85.5, 45.0],
+  scrollWheel: false
+});
 
 const spots = [
   { day: '1·2·13', name_tc: '烏魯木齊', name_sc: '乌鲁木齐', desc_tc: '出發 / 返回據點', desc_sc: '出发 / 返回据点', coords: [43.825592, 87.616848] },
@@ -1930,28 +1953,35 @@ const spots = [
 
 function renderMarkers(lang) {
   spots.forEach(s => {
-    const icon = L.divIcon({
-      className: 'custom-marker-wrapper',
-      html: `<div class="custom-marker"><span>${s.day}</span></div>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 30]
+    const [lat, lng] = wgs84ToGcj02(s.coords[0], s.coords[1]);
+    const marker = new AMap.Marker({
+      position: [lng, lat],
+      content: `<div class="custom-marker"><span>${s.day}</span></div>`,
+      offset: new AMap.Pixel(-15, -30)
     });
-    L.marker(s.coords, { icon })
-      .bindPopup(`<strong style="font-size: 15px;">${lang === 'sc' ? s.name_sc : s.name_tc}</strong><br><span style="color: #7E3D14; font-size: 12px;">${lang === 'sc' ? s.desc_sc : s.desc_tc}</span>`)
-      .addTo(map);
+    const name = lang === 'sc' ? s.name_sc : s.name_tc;
+    const desc = lang === 'sc' ? s.desc_sc : s.desc_tc;
+    const info = new AMap.InfoWindow({
+      content: `<strong style="font-size:15px">${name}</strong><br><span style="color:#7E3D14;font-size:12px">${desc}</span>`,
+      offset: new AMap.Pixel(0, -32)
+    });
+    marker.on('click', () => info.open(map, marker.getPosition()));
+    map.add(marker);
   });
 
-  const route = spots.map(s => s.coords);
-  L.polyline(route, {
-    color: '#A8531E',
-    weight: 2.5,
-    opacity: 0.7,
-    dashArray: '6, 8'
-  }).addTo(map);
+  const path = spots.map(s => { const [la, lo] = wgs84ToGcj02(s.coords[0], s.coords[1]); return [lo, la]; });
+  map.add(new AMap.Polyline({
+    path,
+    strokeColor: '#A8531E',
+    strokeWeight: 2.5,
+    strokeOpacity: 0.7,
+    strokeStyle: 'dashed',
+    strokeDasharray: [6, 8]
+  }));
 }
 
-map.on('click', () => map.scrollWheelZoom.enable());
-map.on('mouseout', () => map.scrollWheelZoom.disable());
+map.on('click', () => map.setStatus({ scrollWheel: true }));
+map.on('mouseout', () => map.setStatus({ scrollWheel: false }));
 
 // ============ 語言切換 ============
 let currentLang = 'tc';
