@@ -428,6 +428,77 @@
 
   .schedule-note strong { color: var(--orange-700); }
 
+  /* === Tips === */
+  .day-tips-container {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tip-card {
+    display: flex;
+    gap: 10px;
+    padding: 9px 13px;
+    background: var(--sand-50);
+    border-radius: 3px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--ink-soft);
+    border-left: 3px solid var(--sand-300);
+  }
+
+  .tip-card[data-cat="food"]  { border-left-color: var(--orange-500); }
+  .tip-card[data-cat="spot"]  { border-left-color: var(--teal); }
+  .tip-card[data-cat="info"]  { border-left-color: #7d6608; }
+  .tip-card[data-cat="warn"]  { border-left-color: #c0392b; }
+
+  .tip-icon { font-size: 14px; flex-shrink: 0; line-height: 1.65; }
+
+  .tip-body { flex: 1; }
+
+  .tip-author {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    color: var(--sand-300);
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-add-tip {
+    margin-top: 8px;
+    background: none;
+    border: 1px dashed var(--sand-300);
+    border-radius: 3px;
+    padding: 7px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--sand-300);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-add-tip:hover { border-color: var(--orange-500); color: var(--orange-500); }
+
+  .tip-cat-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+  .tip-cat-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--sand-300);
+    border-radius: 20px;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--ink-soft);
+  }
+
+  .tip-cat-btn.selected { background: var(--orange-600); border-color: var(--orange-600); color: #fff; }
+
   /* === Map === */
   .map-section {
     background: white;
@@ -1043,6 +1114,27 @@
   </div>
 </div>
 
+<!-- Tip Modal -->
+<div class="diary-modal-overlay" id="tip-modal">
+  <div class="diary-modal">
+    <div class="diary-modal-title">＋ 加貼士</div>
+    <label>類型</label>
+    <div class="tip-cat-picker">
+      <button class="tip-cat-btn selected" data-cat="food" onclick="selectTipCat(this)">🍖 食物</button>
+      <button class="tip-cat-btn" data-cat="spot" onclick="selectTipCat(this)">📍 景點</button>
+      <button class="tip-cat-btn" data-cat="info" onclick="selectTipCat(this)">💡 小知識</button>
+      <button class="tip-cat-btn" data-cat="warn" onclick="selectTipCat(this)">⚠️ 注意</button>
+    </div>
+    <label>內容</label>
+    <textarea id="tip-text" placeholder="例：附近有家大盤雞很好吃，記得點招牌酥肉…" style="height:90px"></textarea>
+    <div class="diary-error" id="tip-error"></div>
+    <div class="diary-modal-actions">
+      <button class="btn-cancel" onclick="closeTipModal()">取消</button>
+      <button class="btn-submit" id="tip-submit" onclick="submitTip()">新增</button>
+    </div>
+  </div>
+</div>
+
 <!-- FOOTER -->
 <footer id="contact">
   <div class="logo">絲路 <em>Caravan</em></div>
@@ -1529,8 +1621,94 @@ async function submitEntry() {
 
 // 按 ESC 關閉 modal
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeAuthModal(); closeWriteModal(); }
+  if (e.key === 'Escape') { closeAuthModal(); closeWriteModal(); closeTipModal(); }
 });
+
+// ============ 貼士系統 ============
+const TIP_CATS = {
+  food: { icon: '🍖', label_tc: '食物', label_sc: '食物' },
+  spot: { icon: '📍', label_tc: '景點', label_sc: '景点' },
+  info: { icon: '💡', label_tc: '小知識', label_sc: '小知识' },
+  warn: { icon: '⚠️', label_tc: '注意', label_sc: '注意' },
+};
+
+let allTips = [];
+let currentTipDay = null;
+let selectedTipCat = 'food';
+
+function initTips() {
+  if (!db) return;
+  db.collection('tips')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(snap => {
+      allTips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderTips(currentLang);
+    }, () => {});
+}
+
+function renderTips(lang) {
+  itinerary.forEach(day => {
+    const container = document.getElementById(`tips-${day.day}`);
+    if (!container) return;
+    const dayTips = allTips.filter(t => t.day === day.day);
+    container.innerHTML = dayTips.map(t => {
+      const cat = TIP_CATS[t.category] || TIP_CATS.info;
+      return `
+        <div class="tip-card" data-cat="${t.category}">
+          <span class="tip-icon">${cat.icon}</span>
+          <div class="tip-body">
+            <div>${t.text}</div>
+            <div class="tip-author">${t.author}</div>
+          </div>
+        </div>`;
+    }).join('');
+  });
+}
+
+function selectTipCat(btn) {
+  selectedTipCat = btn.dataset.cat;
+  document.querySelectorAll('.tip-cat-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function openTipModal(day) {
+  if (!diaryUser) { openAuthModal(); return; }
+  currentTipDay = day;
+  document.getElementById('tip-text').value = '';
+  document.getElementById('tip-error').textContent = '';
+  selectedTipCat = 'food';
+  document.querySelectorAll('.tip-cat-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.cat === 'food'));
+  document.getElementById('tip-modal').classList.add('open');
+  setTimeout(() => document.getElementById('tip-text').focus(), 50);
+}
+
+function closeTipModal() {
+  document.getElementById('tip-modal').classList.remove('open');
+}
+
+async function submitTip() {
+  const text = document.getElementById('tip-text').value.trim();
+  const errEl = document.getElementById('tip-error');
+  const btn = document.getElementById('tip-submit');
+  if (!text) { errEl.textContent = '請寫一點內容'; return; }
+  if (!db) { errEl.textContent = 'Firebase 尚未設定'; return; }
+  btn.disabled = true; btn.textContent = '新增中…';
+  try {
+    await db.collection('tips').add({
+      day: currentTipDay,
+      author: diaryUser.name,
+      category: selectedTipCat,
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeTipModal();
+  } catch(e) {
+    errEl.textContent = '新增失敗，請稍後再試';
+  } finally {
+    btn.disabled = false; btn.textContent = '新增';
+  }
+}
 
 // ============ 渲染行程 ============
 function renderTimeline(lang) {
@@ -1559,6 +1737,8 @@ function renderTimeline(lang) {
           ${hotel ? `<div class="day-hotel">${hotel}</div>` : ''}
           ${note ? `<div class="schedule-note">${note}</div>` : ''}
           <div class="schedule">${scheduleHtml}</div>
+          <div class="day-tips-container" id="tips-${d.day}"></div>
+          <button class="btn-add-tip" onclick="openTipModal('${d.day}')">＋ 加貼士（食物 · 景點 · 注意事項）</button>
         </div>
       </div>
     `;
@@ -1635,6 +1815,7 @@ function setLang(lang) {
   });
 
   renderTimeline(lang);
+  renderTips(lang);
   renderDiaryDays(lang);
 }
 
@@ -1646,6 +1827,7 @@ document.querySelectorAll('.lang-switch button').forEach(b => {
 renderTimeline('tc');
 renderMarkers('tc');
 initDiary();
+initTips();
 </script>
 
 </body>
