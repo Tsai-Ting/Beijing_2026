@@ -22,6 +22,7 @@
     --sand-100: #F2EADB;
     --sand-200: #E5D5B7;
     --sand-300: #C9B58A;
+    --sand-400: #A89060;
     --orange-500: #C56A2C;
     --orange-600: #A8531E;
     --orange-700: #7E3D14;
@@ -398,6 +399,14 @@
     padding: 6px 0;
     font-size: 14px;
     align-items: start;
+  }
+
+  .schedule-drive {
+    font-size: 12px;
+    color: var(--sand-400);
+    padding: 2px 0 2px 116px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
   }
 
   .btn-add-spot-tip {
@@ -1044,6 +1053,7 @@
     .day-number { font-size: 40px; }
     .hero-meta { gap: 24px; }
     .schedule-item { grid-template-columns: 60px 20px 1fr auto; gap: 8px; font-size: 13px; }
+    .schedule-drive { padding-left: 88px; font-size: 11px; }
     .spot-tips-container { margin-left: 88px; }
     #map { height: 400px; }
 
@@ -1843,15 +1853,22 @@ function renderTimeline(lang) {
     const title = lang === 'sc' ? d.title_sc : d.title_tc;
     const hotel = lang === 'sc' ? d.hotel_sc : d.hotel_tc;
     const note = lang === 'sc' ? (d.note_sc || d.note_tc) : d.note_tc;
-    const scheduleHtml = d.schedule.map((s, idx) => `
+    const scheduleHtml = d.schedule.map((s, idx) => {
+      const text = lang === 'sc' ? s.sc : s.tc;
+      if (s.icon === '🚗') {
+        return `
+      <div class="schedule-drive" id="tips-${d.day}-${idx}-anchor">🚗 ${text}</div>
+      <div class="spot-tips-container" id="tips-${d.day}-${idx}"></div>`;
+      }
+      return `
       <div class="schedule-item">
         <div class="schedule-time">${s.time}</div>
         <div class="schedule-icon">${s.icon}</div>
-        <div class="schedule-text">${lang === 'sc' ? s.sc : s.tc}</div>
+        <div class="schedule-text">${text}</div>
         <button class="btn-add-spot-tip" onclick="openTipModal('${d.day}', ${idx})" title="加備註">＋</button>
       </div>
-      <div class="spot-tips-container" id="tips-${d.day}-${idx}"></div>
-    `).join('');
+      <div class="spot-tips-container" id="tips-${d.day}-${idx}"></div>`;
+    }).join('');
 
     return `
       <div class="day">
