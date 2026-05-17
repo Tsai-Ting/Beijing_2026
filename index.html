@@ -407,6 +407,15 @@
     padding: 2px 0 2px 116px;
     line-height: 1.5;
     letter-spacing: 0.01em;
+    position: relative;
+  }
+  .schedule-drive::before {
+    content: '';
+    position: absolute;
+    left: 80px;
+    top: 50%;
+    width: 24px;
+    border-top: 1px dashed var(--sand-300);
   }
 
   .btn-add-spot-tip {
@@ -1857,7 +1866,7 @@ function renderTimeline(lang) {
       const text = lang === 'sc' ? s.sc : s.tc;
       if (s.icon === '🚗') {
         return `
-      <div class="schedule-drive" id="tips-${d.day}-${idx}-anchor">🚗 ${text}</div>
+      <div class="schedule-drive">${text}</div>
       <div class="spot-tips-container" id="tips-${d.day}-${idx}"></div>`;
       }
       return `
