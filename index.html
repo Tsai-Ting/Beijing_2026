@@ -1221,7 +1221,7 @@
         <div class="legend-item"><div class="legend-dot legend-dot-teal"></div><span data-tc="團員新增" data-sc="团员新增">團員新增</span></div>
         <div class="legend-item"><span data-tc="虛線為大致行車路線" data-sc="虚线为大致行车路线">虛線為大致行車路線</span></div>
       </div>
-      <button class="btn-add-location" id="btn-add-location" onclick="openLocationSearch()" style="display:none" data-tc="＋ 加地點" data-sc="＋ 加地点">＋ 加地點</button>
+      <button class="btn-add-location" id="btn-add-location" onclick="openLocationSearch()" data-tc="＋ 加地點" data-sc="＋ 加地点">＋ 加地點</button>
     </div>
   </div>
 </section>
@@ -1675,17 +1675,14 @@ function updateAuthUI() {
   const loginBtn = document.getElementById('btn-diary-login');
   const writeBtn = document.getElementById('btn-diary-write');
   if (!status) return;
-  const addLocBtn = document.getElementById('btn-add-location');
   if (diaryUser) {
     status.innerHTML = `👤 <span class="diary-auth-name">${diaryUser.name}</span> · 已加入`;
     loginBtn.style.display = 'none';
     writeBtn.style.display = '';
-    if (addLocBtn) addLocBtn.style.display = '';
   } else {
     status.textContent = '尚未加入旅行團';
     loginBtn.style.display = '';
     writeBtn.style.display = 'none';
-    if (addLocBtn) addLocBtn.style.display = 'none';
   }
 }
 
